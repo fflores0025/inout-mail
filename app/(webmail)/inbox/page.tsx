@@ -33,7 +33,7 @@ function InboxContent() {
       let targetId = mailboxParam;
       if (!targetId) {
         const mailboxes = await getMailboxes(token!);
-        targetId = mailboxes[0]?.id ?? null;
+        targetId = mailboxes[0]?.id != null ? String(mailboxes[0].id) : null;
         setMailboxId(targetId);
       }
       if (!targetId) {
