@@ -1,10 +1,10 @@
 const API_BASE = process.env.NEXT_PUBLIC_MAIL_API_URL ?? "https://mail-api.inout-media.es";
 
 export interface Mailbox {
-  id: string;
-  address: string;
+  id: number;
+  email: string;
   display_name: string;
-  type: "personal" | "department";
+  kind: "personal" | "department";
 }
 
 export interface Message {
@@ -51,7 +51,9 @@ export function login(address: string, password: string) {
 }
 
 export function getMailboxes(token: string) {
-  return request<Mailbox[]>("/mailboxes", {}, token);
+  return request<{ mailboxes: Mailbox[] }>("/mailboxes", {}, token).then(
+    (res) => res.mailboxes
+  );
 }
 
 export function getMessages(mailboxId: string, token: string) {
