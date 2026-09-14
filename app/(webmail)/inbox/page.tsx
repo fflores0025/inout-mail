@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getMailboxes, getMessages, Message } from "@/lib/api";
 import { getToken } from "@/lib/session";
 
 export default function InboxPage() {
+  return (
+    <Suspense fallback={null}>
+      <InboxContent />
+    </Suspense>
+  );
+}
+
+function InboxContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mailboxParam = searchParams.get("mailbox");
@@ -64,13 +72,4 @@ export default function InboxPage() {
               </span>
               <span className="text-xs text-muted shrink-0">{msg.date}</span>
             </div>
-            <p className={`text-sm mt-1 ${msg.seen ? "text-muted" : "text-paper"}`}>
-              {msg.subject}
-            </p>
-            <p className="text-xs text-muted mt-1 truncate">{msg.snippet}</p>
-          </li>
-        ))}
-      </ul>
-    </main>
-  );
-}
+            <p className={`text-sm mt-1 ${msg.seen ? "text-muted" :
