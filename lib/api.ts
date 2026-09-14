@@ -57,7 +57,11 @@ export function getMailboxes(token: string) {
 }
 
 export function getMessages(mailboxId: string, token: string) {
-  return request<Message[]>(`/mailboxes/${mailboxId}/messages`, {}, token);
+  return request<{ messages: Message[] }>(
+    `/mailboxes/${mailboxId}/messages`,
+    {},
+    token
+  ).then((res) => res.messages);
 }
 
 export function sendMessage(
