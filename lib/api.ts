@@ -46,7 +46,7 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
 export function login(address: string, password: string) {
   return request<{ token: string }>("/auth/login", {
     method: "POST",
-    body: JSON.stringify({ address, password }),
+    body: JSON.stringify({ email: address, password }),
   });
 }
 
