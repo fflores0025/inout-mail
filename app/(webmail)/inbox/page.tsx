@@ -72,4 +72,13 @@ function InboxContent() {
               </span>
               <span className="text-xs text-muted shrink-0">{msg.date}</span>
             </div>
-            <p className={`text-sm mt-1 ${msg.seen ? "text-muted" :
+            <p className={`text-sm mt-1 ${msg.seen ? "text-muted" : "text-paper"}`}>
+              {msg.subject}
+            </p>
+            <p className="text-xs text-muted mt-1 truncate">{msg.snippet}</p>
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
+}
