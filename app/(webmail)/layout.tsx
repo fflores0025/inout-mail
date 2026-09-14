@@ -40,7 +40,7 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
               className="block px-3 py-2 text-sm text-muted hover:text-paper hover:bg-line/40 transition-colors"
             >
               {mb.display_name}
-              <span className="block text-xs text-muted/70">{mb.address}</span>
+               <span className="block text-xs text-muted/70">{mb.email}</span>
             </a>
           ))}
           {mailboxes.length === 0 && (
