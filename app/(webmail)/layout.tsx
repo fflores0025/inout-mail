@@ -31,7 +31,7 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
   }
 
   return (
-    <div className="min-h-screen flex relative">
+    <div className="h-dvh overflow-hidden flex relative">
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 border-b border-line bg-ink z-30 flex items-center px-4">
         <button
           onClick={() => setSidebarOpen(true)}
@@ -70,7 +70,7 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
           </button>
         </div>
 
-        <nav className="flex-1 px-2 py-4 space-y-1">
+        <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
           {mailboxes.map((mb) => (
             <a
               key={mb.id}
@@ -103,7 +103,7 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
         </button>
       </aside>
 
-      <div className="flex-1 min-w-0 pt-14 md:pt-0">{children}</div>
+      <div className="flex-1 min-w-0 pt-14 md:pt-0 h-dvh overflow-y-auto">{children}</div>
     </div>
   );
 }
