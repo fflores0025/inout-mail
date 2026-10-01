@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getMailboxes, Mailbox } from "@/lib/api";
-import { getToken, clearToken } from "@/lib/session";
+import { getToken, clearToken, getUserFromToken } from "@/lib/session";
 
 export default function WebmailLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -15,6 +16,9 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
       router.replace("/login");
       return;
     }
+    const user = getUserFromToken();
+    setIsAdmin(!!user?.is_global_admin);
+
     getMailboxes(token)
       .then(setMailboxes)
       .catch(() => router.replace("/login"));
@@ -40,13 +44,22 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
               className="block px-3 py-2 text-sm text-muted hover:text-paper hover:bg-line/40 transition-colors"
             >
               {mb.display_name}
-               <span className="block text-xs text-muted/70">{mb.email}</span>
+              <span className="block text-xs text-muted/70">{mb.email}</span>
             </a>
           ))}
           {mailboxes.length === 0 && (
             <p className="px-3 py-2 text-xs text-muted">Sin buzones asignados</p>
           )}
         </nav>
+
+        {isAdmin && (
+          <a
+            href="/admin"
+            className="mx-4 mb-3 px-3 py-2 text-xs text-center text-muted border border-line hover:border-paper hover:text-paper transition-colors"
+          >
+            Panel de administración
+          </a>
+        )}
 
         <button
           onClick={handleLogout}
