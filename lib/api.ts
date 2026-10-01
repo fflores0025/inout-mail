@@ -17,6 +17,48 @@ export interface Message {
   seen: boolean;
 }
 
+export interface AdminUser {
+  id: number;
+  full_name: string;
+  login_email: string;
+  is_global_admin: boolean;
+  status: string;
+  created_at: string;
+}
+
+export interface AdminAddress {
+  id: number;
+  email: string;
+  maildir: string;
+}
+
+export interface AdminMailbox {
+  id: number;
+  kind: "personal" | "department";
+  display_name: string;
+  email: string;
+  owner_name: string | null;
+}
+
+export interface AdminPermission {
+  app_user_id: number;
+  full_name: string;
+  login_email: string;
+  can_read: boolean;
+  can_send: boolean;
+  can_delete: boolean;
+  can_manage: boolean;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  mailbox: string;
+  actor: string;
+  action: string;
+  details: unknown;
+  created_at: string;
+}
+
 class ApiError extends Error {
   status: number;
   constructor(status: number, message: string) {
@@ -37,7 +79,7 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new ApiError(res.status, body?.message ?? `Error ${res.status}`);
+    throw new ApiError(res.status, body?.error ?? body?.message ?? `Error ${res.status}`);
   }
 
   return res.json() as Promise<T>;
@@ -73,6 +115,113 @@ export function sendMessage(
     `/mailboxes/${mailboxId}/send`,
     { method: "POST", body: JSON.stringify(payload) },
     token
+  );
+}
+
+// --- Admin: usuarios ---
+
+export function adminGetUsers(token: string) {
+  return request<{ users: AdminUser[] }>("/admin/users", {}, token).then(
+    (res) => res.users
+  );
+}
+
+export function adminCreateUser(
+  token: string,
+  data: { full_name: string; login_email: string; password: string; is_global_admin?: boolean }
+) {
+  return request<{ user: AdminUser }>(
+    "/admin/users",
+    { method: "POST", body: JSON.stringify(data) },
+    token
+  ).then((res) => res.user);
+}
+
+export function adminUpdateUser(
+  token: string,
+  id: number,
+  data: { status?: string; is_global_admin?: boolean }
+) {
+  return request<{ user: AdminUser }>(
+    `/admin/users/${id}`,
+    { method: "PATCH", body: JSON.stringify(data) },
+    token
+  ).then((res) => res.user);
+}
+
+// --- Admin: direcciones de correo (virtual_users) ---
+
+export function adminGetAddresses(token: string) {
+  return request<{ addresses: AdminAddress[] }>("/admin/addresses", {}, token).then(
+    (res) => res.addresses
+  );
+}
+
+export function adminCreateAddress(
+  token: string,
+  data: { email: string; password: string }
+) {
+  return request<{ address: AdminAddress }>(
+    "/admin/addresses",
+    { method: "POST", body: JSON.stringify(data) },
+    token
+  ).then((res) => res.address);
+}
+
+// --- Admin: buzones ---
+
+export function adminGetMailboxes(token: string) {
+  return request<{ mailboxes: AdminMailbox[] }>("/admin/mailboxes", {}, token).then(
+    (res) => res.mailboxes
+  );
+}
+
+export function adminCreateMailbox(
+  token: string,
+  data: { virtual_user_email: string; kind: "personal" | "department"; display_name: string; owner_user_id?: number }
+) {
+  return request<{ mailbox: AdminMailbox }>(
+    "/admin/mailboxes",
+    { method: "POST", body: JSON.stringify(data) },
+    token
+  ).then((res) => res.mailbox);
+}
+
+// --- Admin: permisos sobre un buzón ---
+
+export function adminGetPermissions(token: string, mailboxId: number) {
+  return request<{ permissions: AdminPermission[] }>(
+    `/admin/mailboxes/${mailboxId}/permissions`,
+    {},
+    token
+  ).then((res) => res.permissions);
+}
+
+export function adminSetPermission(
+  token: string,
+  mailboxId: number,
+  data: { app_user_id: number; can_read?: boolean; can_send?: boolean; can_delete?: boolean; can_manage?: boolean }
+) {
+  return request(
+    `/admin/mailboxes/${mailboxId}/permissions`,
+    { method: "POST", body: JSON.stringify(data) },
+    token
+  );
+}
+
+export function adminRevokePermission(token: string, mailboxId: number, userId: number) {
+  return request(
+    `/admin/mailboxes/${mailboxId}/permissions/${userId}`,
+    { method: "DELETE" },
+    token
+  );
+}
+
+// --- Admin: auditoría ---
+
+export function adminGetAuditLog(token: string) {
+  return request<{ audit_log: AuditLogEntry[] }>("/admin/audit-log", {}, token).then(
+    (res) => res.audit_log
   );
 }
 
