@@ -13,3 +13,21 @@ export function getToken(): string | null {
 export function clearToken() {
   document.cookie = `${TOKEN_KEY}=; path=/; max-age=0`;
 }
+
+export interface SessionUser {
+  sub: number;
+  email: string;
+  is_global_admin: boolean;
+}
+
+export function getUserFromToken(): SessionUser | null {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const payload = token.split(".")[1];
+    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
