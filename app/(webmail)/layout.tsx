@@ -53,7 +53,7 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
       )}
 
       <aside
-        className={`w-72 md:w-60 shrink-0 border-r border-line flex flex-col h-screen overflow-y-auto fixed md:static top-0 left-0 z-50 bg-ink transition-transform duration-200 ${
+        className={`w-72 md:w-60 shrink-0 border-r border-line flex flex-col h-dvh overflow-y-auto fixed md:static top-0 left-0 z-50 bg-ink transition-transform duration-200 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
