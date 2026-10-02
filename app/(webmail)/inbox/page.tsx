@@ -133,7 +133,7 @@ function ComposeModal({
     setError(null);
     try {
       const token = getToken()!;
-      await sendMessage(mailboxId, token, { to, subject, body });
+      await sendMessage(mailboxId, token, { to, subject, text: body });
       onSent();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo enviar el mensaje");
