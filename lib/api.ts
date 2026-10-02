@@ -109,7 +109,7 @@ export function getMessages(mailboxId: string, token: string) {
 export function sendMessage(
   mailboxId: string,
   token: string,
-  payload: { to: string; subject: string; body: string }
+  payload: { to: string; subject: string; text: string }
 ) {
   return request<{ sent: boolean }>(
     `/mailboxes/${mailboxId}/send`,
