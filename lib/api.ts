@@ -17,6 +17,20 @@ export interface Message {
   seen: boolean;
 }
 
+export interface FullMessage {
+  uid: number;
+  subject: string;
+  from_name: string;
+  from: string;
+  reply_to: string;
+  to: string;
+  cc: string;
+  date: string | null;
+  text: string;
+  html: string | null;
+  attachments: { filename: string; size: number }[];
+}
+
 export interface AdminUser {
   id: number;
   full_name: string;
@@ -106,6 +120,14 @@ export function getMessages(mailboxId: string, token: string) {
   ).then((res) => res.messages);
 }
 
+export function getMessage(mailboxId: string, uid: number, token: string) {
+  return request<{ message: FullMessage }>(
+    `/mailboxes/${mailboxId}/messages/${uid}`,
+    {},
+    token
+  ).then((res) => res.message);
+}
+
 export function sendMessage(
   mailboxId: string,
   token: string,
@@ -147,6 +169,10 @@ export function adminUpdateUser(
     { method: "PATCH", body: JSON.stringify(data) },
     token
   ).then((res) => res.user);
+}
+
+export function adminDeleteUser(token: string, id: number) {
+  return request<{ success: boolean }>(`/admin/users/${id}`, { method: "DELETE" }, token);
 }
 
 // --- Admin: direcciones de correo (virtual_users) ---
