@@ -31,13 +31,24 @@ export interface FullMessage {
   attachments: { filename: string; size: number }[];
 }
 
+export type Role = "super_admin" | "admin" | "employee";
+
+export interface Me {
+  id: number;
+  full_name: string;
+  login_email: string;
+  role: Role;
+}
+
 export interface AdminUser {
   id: number;
   full_name: string;
   login_email: string;
   is_global_admin: boolean;
+  role: Role;
   status: string;
   created_at: string;
+  personal_mailbox_id: number | null;
 }
 
 export interface AdminAddress {
@@ -58,6 +69,7 @@ export interface AdminPermission {
   app_user_id: number;
   full_name: string;
   login_email: string;
+  role: Role;
   can_read: boolean;
   can_send: boolean;
   can_delete: boolean;
@@ -106,6 +118,10 @@ export function login(address: string, password: string) {
   });
 }
 
+export function getMe(token: string) {
+  return request<{ user: Me }>("/me", {}, token).then((res) => res.user);
+}
+
 export function getMailboxes(token: string) {
   return request<{ mailboxes: Mailbox[] }>("/mailboxes", {}, token).then(
     (res) => res.mailboxes
@@ -150,25 +166,39 @@ export function adminGetUsers(token: string) {
 
 export function adminCreateUser(
   token: string,
-  data: { full_name: string; login_email: string; password: string; is_global_admin?: boolean }
+  data: {
+    full_name: string;
+    login_email: string;
+    password: string;
+    role: Role;
+    create_personal_mailbox: boolean;
+  }
 ) {
-  return request<{ user: AdminUser }>(
+  return request<{ user: AdminUser; mailbox: { id: number; email: string } | null }>(
     "/admin/users",
     { method: "POST", body: JSON.stringify(data) },
     token
-  ).then((res) => res.user);
+  );
 }
 
 export function adminUpdateUser(
   token: string,
   id: number,
-  data: { status?: string; is_global_admin?: boolean }
+  data: { status?: string; role?: Role }
 ) {
   return request<{ user: AdminUser }>(
     `/admin/users/${id}`,
     { method: "PATCH", body: JSON.stringify(data) },
     token
   ).then((res) => res.user);
+}
+
+export function adminCreatePersonalMailbox(token: string, id: number, password?: string) {
+  return request<{ mailbox: { id: number; email: string } }>(
+    `/admin/users/${id}/personal-mailbox`,
+    { method: "POST", body: JSON.stringify(password ? { password } : {}) },
+    token
+  );
 }
 
 export function adminDeleteUser(token: string, id: number) {
@@ -204,7 +234,13 @@ export function adminGetMailboxes(token: string) {
 
 export function adminCreateMailbox(
   token: string,
-  data: { virtual_user_email: string; kind: "personal" | "department"; display_name: string; owner_user_id?: number }
+  data: {
+    virtual_user_email: string;
+    kind: "personal" | "department";
+    display_name: string;
+    owner_user_id?: number;
+    password?: string;
+  }
 ) {
   return request<{ mailbox: AdminMailbox }>(
     "/admin/mailboxes",
@@ -245,10 +281,27 @@ export function adminRevokePermission(token: string, mailboxId: number, userId: 
 
 // --- Admin: auditoría ---
 
-export function adminGetAuditLog(token: string) {
-  return request<{ audit_log: AuditLogEntry[] }>("/admin/audit-log", {}, token).then(
-    (res) => res.audit_log
-  );
+export function adminGetAuditLog(
+  token: string,
+  filters: { mailbox_id?: number; user_id?: number } = {}
+) {
+  const params = new URLSearchParams();
+  if (filters.mailbox_id) params.set("mailbox_id", String(filters.mailbox_id));
+  if (filters.user_id) params.set("user_id", String(filters.user_id));
+  const qs = params.toString();
+  return request<{ audit_log: AuditLogEntry[] }>(
+    `/admin/audit-log${qs ? `?${qs}` : ""}`,
+    {},
+    token
+  ).then((res) => res.audit_log);
+}
+
+export function adminGetAuditMessage(token: string, entryId: number) {
+  return request<{ message: FullMessage }>(
+    `/admin/audit-log/${entryId}/message`,
+    {},
+    token
+  ).then((res) => res.message);
 }
 
 export { ApiError };
