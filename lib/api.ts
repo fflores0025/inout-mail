@@ -85,7 +85,7 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
