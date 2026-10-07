@@ -1,89 +1,97 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { adminGetAddresses, adminCreateAddress, AdminAddress, ApiError } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
+import { AdminAddress, ApiError, adminCreateAddress, adminGetAddresses } from "@/lib/api";
 import { getToken } from "@/lib/session";
+import { EmailInput, fullEmail } from "@/components/EmailInput";
+
+const input =
+  "w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper";
 
 export default function AdminAddressesPage() {
   const [addresses, setAddresses] = useState<AdminAddress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const [email, setEmail] = useState("");
+  const [notice, setNotice] = useState<string | null>(null);
+  const [local, setLocal] = useState("");
   const [password, setPassword] = useState("");
   const [creating, setCreating] = useState(false);
 
-  function load() {
-    const token = getToken()!;
-    setLoading(true);
-    adminGetAddresses(token)
-      .then(setAddresses)
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Error al cargar direcciones"))
-      .finally(() => setLoading(false));
-  }
+  const errMsg = (err: unknown) =>
+    err instanceof ApiError ? err.message : "No se pudo conectar con el servidor";
 
-  useEffect(load, []);
+  const load = useCallback(async () => {
+    const token = getToken();
+    if (!token) return;
+    try {
+      setAddresses(await adminGetAddresses(token));
+    } catch (err) {
+      setError(errMsg(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    const token = getToken();
+    if (!token) return;
     setCreating(true);
     setError(null);
+    setNotice(null);
     try {
-      const token = getToken()!;
-      await adminCreateAddress(token, { email, password });
-      setEmail("");
+      const created = await adminCreateAddress(token, { email: fullEmail(local), password });
+      setNotice(`Dirección ${created.email} creada. Para verla en el webmail, crea su buzón en la pestaña Buzones.`);
+      setLocal("");
       setPassword("");
-      load();
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Error al crear la dirección");
+      await load();
+    } catch (err) {
+      setError(errMsg(err));
     } finally {
       setCreating(false);
     }
   }
 
   return (
-    <div className="max-w-3xl space-y-10">
-      <section>
-        <h2 className="font-display text-lg text-paper mb-4">Nueva dirección de correo</h2>
-        <form onSubmit={handleCreate} className="space-y-3">
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            placeholder="nombre@inout-media.es"
-            required
-            className="w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper"
-          />
-          <input
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            placeholder="Contraseña del buzón"
-            required
-            className="w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper"
-          />
-          {error && <p className="text-sm text-red-400">{error}</p>}
-          <button
-            type="submit"
-            disabled={creating}
-            className="px-4 py-2 text-sm border border-paper text-paper hover:bg-paper hover:text-ink transition-colors disabled:opacity-50"
-          >
-            {creating ? "Creando…" : "Crear dirección"}
-          </button>
-        </form>
-      </section>
+    <div className="space-y-10">
+      {error && <p className="text-sm text-red-400 border border-red-400/40 px-3 py-2">{error}</p>}
+      {notice && <p className="text-sm text-paper border border-line px-3 py-2">{notice}</p>}
+
+      <form onSubmit={handleCreate} className="space-y-3 max-w-md">
+        <h2 className="font-display text-xl text-paper">Crear dirección</h2>
+        <EmailInput value={local} onChange={setLocal} />
+        <input
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          type="password"
+          placeholder="Contraseña (mínimo 8 caracteres)"
+          required
+          minLength={8}
+          className={input}
+        />
+        <button
+          type="submit"
+          disabled={creating}
+          className="px-4 py-2 text-sm border border-paper text-paper hover:bg-paper hover:text-ink transition-colors disabled:opacity-50"
+        >
+          {creating ? "Creando…" : "Crear dirección"}
+        </button>
+      </form>
 
       <section>
-        <h2 className="font-display text-lg text-paper mb-4">Direcciones existentes</h2>
+        <h2 className="font-display text-xl text-paper mb-4">Direcciones existentes</h2>
         {loading && <p className="text-sm text-muted">Cargando…</p>}
-        <div className="divide-y divide-line border-t border-line">
+        <ul className="divide-y divide-line border-y border-line">
           {addresses.map((a) => (
-            <div key={a.id} className="py-3">
-              <p className="text-sm text-paper">{a.email}</p>
-              <p className="text-xs text-muted">{a.maildir}</p>
-            </div>
+            <li key={a.id} className="py-3 text-sm text-paper break-all">
+              {a.email}
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
     </div>
   );
