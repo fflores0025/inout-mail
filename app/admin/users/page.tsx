@@ -1,35 +1,52 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   AdminUser,
   ApiError,
+  Role,
+  adminCreatePersonalMailbox,
   adminCreateUser,
   adminDeleteUser,
   adminGetUsers,
   adminUpdateUser,
+  getMe,
 } from "@/lib/api";
-import { getToken, getUserFromToken } from "@/lib/session";
+import { getToken } from "@/lib/session";
+import { EmailInput, fullEmail } from "@/components/EmailInput";
+
+const ROLE_LABEL: Record<Role, string> = {
+  super_admin: "Super admin",
+  admin: "Admin (director)",
+  employee: "Empleado",
+};
+
+const input =
+  "w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper";
+const selectBox =
+  "w-full bg-ink border border-line px-3 py-2 text-sm text-paper focus:outline-none focus:border-paper";
+const btn =
+  "px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors disabled:opacity-40";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [myId, setMyId] = useState<number | null>(null);
 
   const [fullName, setFullName] = useState("");
-  const [loginEmail, setLoginEmail] = useState("");
+  const [local, setLocal] = useState("");
   const [password, setPassword] = useState("");
-  const [makeAdmin, setMakeAdmin] = useState(false);
+  const [role, setRole] = useState<Role>("employee");
+  const [withMailbox, setWithMailbox] = useState(true);
   const [creating, setCreating] = useState(false);
 
-  function errMsg(err: unknown) {
-    if (err instanceof ApiError) return err.message;
-    return "No se pudo conectar con el servidor";
-  }
+  const errMsg = (err: unknown) =>
+    err instanceof ApiError ? err.message : "No se pudo conectar con el servidor";
 
-  async function load() {
+  const load = useCallback(async () => {
     const token = getToken();
     if (!token) return;
     try {
@@ -39,14 +56,13 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    const me = getUserFromToken() as any;
-    if (me?.sub != null) setMyId(Number(me.sub));
+    const token = getToken();
+    if (token) getMe(token).then((m) => setMyId(m.id)).catch(() => {});
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [load]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -54,17 +70,23 @@ export default function AdminUsersPage() {
     if (!token) return;
     setCreating(true);
     setError(null);
+    setNotice(null);
     try {
-      await adminCreateUser(token, {
-        full_name: fullName,
-        login_email: loginEmail,
+      const res = await adminCreateUser(token, {
+        full_name: fullName.trim(),
+        login_email: fullEmail(local),
         password,
-        is_global_admin: makeAdmin,
+        role,
+        create_personal_mailbox: withMailbox,
       });
+      setNotice(
+        `Usuario creado${res.mailbox ? ` con buzón personal ${res.mailbox.email}` : ""}.`
+      );
       setFullName("");
-      setLoginEmail("");
+      setLocal("");
       setPassword("");
-      setMakeAdmin(false);
+      setRole("employee");
+      setWithMailbox(true);
       await load();
     } catch (err) {
       setError(errMsg(err));
@@ -73,13 +95,15 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function update(u: AdminUser, data: { status?: string; is_global_admin?: boolean }) {
+  async function run(u: AdminUser, fn: (token: string) => Promise<unknown>, ok?: string) {
     const token = getToken();
     if (!token) return;
     setBusyId(u.id);
     setError(null);
+    setNotice(null);
     try {
-      await adminUpdateUser(token, u.id, data);
+      await fn(token);
+      if (ok) setNotice(ok);
       await load();
     } catch (err) {
       setError(errMsg(err));
@@ -88,28 +112,34 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function remove(u: AdminUser) {
+  function changeRole(u: AdminUser, next: Role) {
+    if (next === u.role) return;
+    if (u.role === "super_admin") {
+      const sure = window.confirm(
+        `${u.full_name} dejará de ser super admin y perderá el acceso a todos los buzones salvo los suyos. ¿Continuar?`
+      );
+      if (!sure) return;
+    }
+    run(u, (t) => adminUpdateUser(t, u.id, { role: next }));
+  }
+
+  function remove(u: AdminUser) {
     if (!window.confirm(`¿Eliminar definitivamente a ${u.full_name}? No se puede deshacer.`)) return;
-    const token = getToken();
-    if (!token) return;
-    setBusyId(u.id);
-    setError(null);
-    try {
-      await adminDeleteUser(token, u.id);
-      await load();
-    } catch (err) {
-      setError(errMsg(err));
-    } finally {
-      setBusyId(null);
-    }
+    run(u, (t) => adminDeleteUser(t, u.id));
   }
 
-  const btn =
-    "px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors disabled:opacity-40";
+  function createMailbox(u: AdminUser) {
+    const pw = window.prompt(
+      `Contraseña para el buzón de ${u.login_email} (mínimo 8 caracteres). Déjala vacía si la dirección ya existe.`
+    );
+    if (pw === null) return;
+    run(u, (t) => adminCreatePersonalMailbox(t, u.id, pw || undefined), "Buzón personal creado.");
+  }
 
   return (
     <div className="space-y-10">
       {error && <p className="text-sm text-red-400 border border-red-400/40 px-3 py-2">{error}</p>}
+      {notice && <p className="text-sm text-paper border border-line px-3 py-2">{notice}</p>}
 
       <form onSubmit={handleCreate} className="space-y-3 max-w-md">
         <h2 className="font-display text-xl text-paper">Crear usuario</h2>
@@ -118,27 +148,34 @@ export default function AdminUsersPage() {
           onChange={(e) => setFullName(e.target.value)}
           placeholder="Nombre completo"
           required
-          className="w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper"
+          className={input}
         />
-        <input
-          value={loginEmail}
-          onChange={(e) => setLoginEmail(e.target.value)}
-          type="email"
-          placeholder="Email de acceso"
-          required
-          className="w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper"
-        />
+        <EmailInput value={local} onChange={setLocal} placeholder="usuario" />
         <input
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           type="password"
-          placeholder="Contraseña"
+          placeholder="Contraseña (mínimo 8 caracteres)"
           required
-          className="w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper"
+          minLength={8}
+          className={input}
         />
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value as Role)}
+          className={selectBox}
+        >
+          <option value="employee" className="bg-ink">Empleado</option>
+          <option value="admin" className="bg-ink">Admin (director de departamento)</option>
+          <option value="super_admin" className="bg-ink">Super admin</option>
+        </select>
         <label className="flex items-center gap-2 text-sm text-muted">
-          <input type="checkbox" checked={makeAdmin} onChange={(e) => setMakeAdmin(e.target.checked)} />
-          Administrador
+          <input
+            type="checkbox"
+            checked={withMailbox}
+            onChange={(e) => setWithMailbox(e.target.checked)}
+          />
+          Crear su buzón personal (misma dirección y contraseña)
         </label>
         <button
           type="submit"
@@ -158,7 +195,7 @@ export default function AdminUsersPage() {
             const isMe = u.id === myId;
             const busy = busyId === u.id;
             return (
-              <li key={u.id} className="py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <li key={u.id} className="py-4 space-y-3">
                 <div className={disabled ? "opacity-50" : ""}>
                   <p className="text-sm text-paper">
                     {u.full_name}
@@ -166,20 +203,33 @@ export default function AdminUsersPage() {
                   </p>
                   <p className="text-xs text-muted">{u.login_email}</p>
                   <p className="text-xs text-muted mt-1">
-                    {u.is_global_admin ? "Administrador" : "Usuario"} · {disabled ? "Desactivado" : "Activo"}
+                    {ROLE_LABEL[u.role]} · {disabled ? "Desactivado" : "Activo"} ·{" "}
+                    {u.personal_mailbox_id ? "Con buzón personal" : "Sin buzón personal"}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    className={btn}
-                    disabled={busy || (isMe && u.is_global_admin)}
-                    onClick={() => update(u, { is_global_admin: !u.is_global_admin })}
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={u.role}
+                    disabled={busy || isMe}
+                    onChange={(e) => changeRole(u, e.target.value as Role)}
+                    className="bg-ink border border-line px-2 py-1.5 text-xs text-paper disabled:opacity-40"
                   >
-                    {u.is_global_admin ? "Quitar admin" : "Hacer admin"}
-                  </button>
+                    <option value="employee">Empleado</option>
+                    <option value="admin">Admin</option>
+                    <option value="super_admin">Super admin</option>
+                  </select>
+                  {!u.personal_mailbox_id && (
+                    <button className={btn} disabled={busy} onClick={() => createMailbox(u)}>
+                      Crear buzón personal
+                    </button>
+                  )}
                   {disabled ? (
                     <>
-                      <button className={btn} disabled={busy} onClick={() => update(u, { status: "active" })}>
+                      <button
+                        className={btn}
+                        disabled={busy}
+                        onClick={() => run(u, (t) => adminUpdateUser(t, u.id, { status: "active" }))}
+                      >
                         Activar
                       </button>
                       <button
@@ -191,7 +241,11 @@ export default function AdminUsersPage() {
                       </button>
                     </>
                   ) : (
-                    <button className={btn} disabled={busy || isMe} onClick={() => update(u, { status: "disabled" })}>
+                    <button
+                      className={btn}
+                      disabled={busy || isMe}
+                      onClick={() => run(u, (t) => adminUpdateUser(t, u.id, { status: "disabled" }))}
+                    >
                       Desactivar
                     </button>
                   )}
