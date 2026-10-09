@@ -9,11 +9,13 @@ import {
   adminCreateUser,
   adminDeleteUser,
   adminGetUsers,
+  adminSetUserPassword,
   adminUpdateUser,
   getMe,
 } from "@/lib/api";
 import { getToken } from "@/lib/session";
 import { EmailInput, fullEmail } from "@/components/EmailInput";
+import { PasswordForm } from "@/components/PasswordForm";
 
 const ROLE_LABEL: Record<Role, string> = {
   super_admin: "Super admin",
@@ -35,6 +37,7 @@ export default function AdminUsersPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const [myId, setMyId] = useState<number | null>(null);
+  const [pwUserId, setPwUserId] = useState<number | null>(null);
 
   const [fullName, setFullName] = useState("");
   const [local, setLocal] = useState("");
@@ -218,6 +221,13 @@ export default function AdminUsersPage() {
                     <option value="admin">Admin</option>
                     <option value="super_admin">Super admin</option>
                   </select>
+                  <button
+                    className={btn}
+                    disabled={busy}
+                    onClick={() => setPwUserId(pwUserId === u.id ? null : u.id)}
+                  >
+                    Contraseña
+                  </button>
                   {!u.personal_mailbox_id && (
                     <button className={btn} disabled={busy} onClick={() => createMailbox(u)}>
                       Crear buzón personal
@@ -250,6 +260,41 @@ export default function AdminUsersPage() {
                     </button>
                   )}
                 </div>
+                {pwUserId === u.id && (
+                  <div className="border border-line p-4">
+                    <p className="text-xs text-muted mb-3">
+                      Nueva contraseña para {u.full_name}
+                    </p>
+                    <PasswordForm
+                      askCurrent={false}
+                      mailboxLabel={
+                        u.personal_mailbox_id
+                          ? "Cambiar también la contraseña de su buzón personal"
+                          : undefined
+                      }
+                      submitLabel="Guardar contraseña"
+                      onCancel={() => setPwUserId(null)}
+                      onSubmit={async (v) => {
+                        const token = getToken();
+                        if (!token) return;
+                        try {
+                          const res = await adminSetUserPassword(token, u.id, {
+                            password: v.next,
+                            also_mailbox: !!u.personal_mailbox_id && v.alsoMailbox,
+                          });
+                          setNotice(
+                            res.mailbox_updated
+                              ? `Contraseña de ${u.full_name} cambiada (acceso y buzón).`
+                              : `Contraseña de acceso de ${u.full_name} cambiada.`
+                          );
+                          setPwUserId(null);
+                        } catch (err) {
+                          throw new Error(errMsg(err));
+                        }
+                      }}
+                    />
+                  </div>
+                )}
               </li>
             );
           })}
