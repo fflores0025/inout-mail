@@ -60,9 +60,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             InOut Mail · {isSuper ? "Super administrador" : "Director de departamento"}
           </p>
         </div>
-        <Link href="/inbox" className="text-sm text-muted hover:text-paper shrink-0">
-          ← Volver al correo
-        </Link>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <Link href="/inbox" className="text-sm text-muted hover:text-paper">
+            ← Volver al correo
+          </Link>
+          <Link href="/account" className="text-sm text-muted hover:text-paper">
+            Mi contraseña
+          </Link>
+        </div>
       </header>
 
       <nav className="px-6 sm:px-8 border-y border-line flex gap-6 overflow-x-auto">
