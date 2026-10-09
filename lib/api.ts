@@ -304,4 +304,35 @@ export function adminGetAuditMessage(token: string, entryId: number) {
   ).then((res) => res.message);
 }
 
+export function changeMyPassword(
+  token: string,
+  data: { current_password: string; new_password: string; also_mailbox?: boolean }
+) {
+  return request<{ success: boolean; mailbox_updated: boolean }>(
+    "/me/password",
+    { method: "POST", body: JSON.stringify(data) },
+    token
+  );
+}
+
+export function adminSetUserPassword(
+  token: string,
+  userId: number,
+  data: { password: string; also_mailbox?: boolean }
+) {
+  return request<{ success: boolean; mailbox_updated: boolean }>(
+    `/admin/users/${userId}/password`,
+    { method: "POST", body: JSON.stringify(data) },
+    token
+  );
+}
+
+export function adminSetAddressPassword(token: string, addressId: number, password: string) {
+  return request<{ success: boolean }>(
+    `/admin/addresses/${addressId}/password`,
+    { method: "POST", body: JSON.stringify({ password }) },
+    token
+  );
+}
+
 export { ApiError };
