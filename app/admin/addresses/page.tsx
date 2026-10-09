@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AdminAddress, ApiError, adminCreateAddress, adminGetAddresses } from "@/lib/api";
+import {
+  AdminAddress,
+  ApiError,
+  adminCreateAddress,
+  adminGetAddresses,
+  adminSetAddressPassword,
+} from "@/lib/api";
 import { getToken } from "@/lib/session";
 import { EmailInput, fullEmail } from "@/components/EmailInput";
 
@@ -56,6 +62,21 @@ export default function AdminAddressesPage() {
     }
   }
 
+  async function changePassword(a: AdminAddress) {
+    const token = getToken();
+    if (!token) return;
+    const pw = window.prompt(`Nueva contraseña para ${a.email} (mínimo 8 caracteres)`);
+    if (pw === null) return;
+    setError(null);
+    setNotice(null);
+    try {
+      await adminSetAddressPassword(token, a.id, pw);
+      setNotice(`Contraseña de ${a.email} cambiada.`);
+    } catch (err) {
+      setError(errMsg(err));
+    }
+  }
+
   return (
     <div className="space-y-10">
       {error && <p className="text-sm text-red-400 border border-red-400/40 px-3 py-2">{error}</p>}
@@ -87,8 +108,14 @@ export default function AdminAddressesPage() {
         {loading && <p className="text-sm text-muted">Cargando…</p>}
         <ul className="divide-y divide-line border-y border-line">
           {addresses.map((a) => (
-            <li key={a.id} className="py-3 text-sm text-paper break-all">
-              {a.email}
+            <li key={a.id} className="py-3 flex items-center justify-between gap-3">
+              <span className="text-sm text-paper break-all">{a.email}</span>
+              <button
+                onClick={() => changePassword(a)}
+                className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors shrink-0"
+              >
+                Contraseña
+              </button>
             </li>
           ))}
         </ul>
