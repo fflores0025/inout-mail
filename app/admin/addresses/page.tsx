@@ -5,7 +5,9 @@ import {
   AdminAddress,
   ApiError,
   adminCreateAddress,
+  adminDeleteAddress,
   adminGetAddresses,
+  adminSetAddressActive,
   adminSetAddressPassword,
 } from "@/lib/api";
 import { getToken } from "@/lib/session";
@@ -62,6 +64,43 @@ export default function AdminAddressesPage() {
     }
   }
 
+  async function toggleActive(a: AdminAddress) {
+    const token = getToken();
+    if (!token) return;
+    const next = a.active === false;
+    setError(null);
+    setNotice(null);
+    try {
+      await adminSetAddressActive(token, a.id, next);
+      setNotice(
+        next
+          ? `Dirección ${a.email} activada.`
+          : `Dirección ${a.email} desactivada. Ya no recibe correo ni se puede entrar con ella.`
+      );
+      await load();
+    } catch (err) {
+      setError(errMsg(err));
+    }
+  }
+
+  async function removeAddress(a: AdminAddress) {
+    const token = getToken();
+    if (!token) return;
+    const sure = window.confirm(
+      `¿Eliminar definitivamente la dirección ${a.email}?\n\nDejará de existir y no se podrá volver a usar con su contraseña. Los correos guardados en el servidor no se borran. No se puede deshacer.`
+    );
+    if (!sure) return;
+    setError(null);
+    setNotice(null);
+    try {
+      await adminDeleteAddress(token, a.id);
+      setNotice(`Dirección ${a.email} eliminada.`);
+      await load();
+    } catch (err) {
+      setError(errMsg(err));
+    }
+  }
+
   async function changePassword(a: AdminAddress) {
     const token = getToken();
     if (!token) return;
@@ -109,13 +148,32 @@ export default function AdminAddressesPage() {
         <ul className="divide-y divide-line border-y border-line">
           {addresses.map((a) => (
             <li key={a.id} className="py-3 flex items-center justify-between gap-3">
-              <span className="text-sm text-paper break-all">{a.email}</span>
-              <button
-                onClick={() => changePassword(a)}
-                className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors shrink-0"
-              >
-                Contraseña
-              </button>
+              <div className={`min-w-0 ${a.active === false ? "opacity-50" : ""}`}>
+                <p className="text-sm text-paper break-all">{a.email}</p>
+                {a.active === false && <p className="text-xs text-muted mt-1">Desactivada</p>}
+              </div>
+              <div className="flex flex-wrap justify-end gap-2 shrink-0">
+                <button
+                  onClick={() => changePassword(a)}
+                  className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors"
+                >
+                  Contraseña
+                </button>
+                <button
+                  onClick={() => toggleActive(a)}
+                  className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors"
+                >
+                  {a.active === false ? "Activar" : "Desactivar"}
+                </button>
+                {a.active === false && (
+                  <button
+                    onClick={() => removeAddress(a)}
+                    className="px-3 py-1.5 text-xs border border-red-400/50 text-red-400 hover:bg-red-400/10"
+                  >
+                    Eliminar
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
