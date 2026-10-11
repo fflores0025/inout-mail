@@ -8,10 +8,12 @@ import {
   ApiError,
   Me,
   adminCreateMailbox,
+  adminDeleteMailbox,
   adminGetMailboxes,
   adminGetPermissions,
   adminGetUsers,
   adminRevokePermission,
+  adminSetMailboxStatus,
   adminSetPermission,
   getMe,
 } from "@/lib/api";
@@ -153,6 +155,44 @@ export default function AdminMailboxesPage() {
     }
   }
 
+  async function toggleStatus(m: AdminMailbox) {
+    const token = getToken();
+    if (!token) return;
+    const next = m.status === "disabled" ? "active" : "disabled";
+    setError(null);
+    setNotice(null);
+    try {
+      await adminSetMailboxStatus(token, m.id, next);
+      setNotice(
+        next === "disabled"
+          ? `Buzón "${m.display_name}" desactivado. Ya no aparece en el webmail.`
+          : `Buzón "${m.display_name}" activado.`
+      );
+      await loadMailboxes();
+    } catch (err) {
+      setError(errMsg(err));
+    }
+  }
+
+  async function removeMailbox(m: AdminMailbox) {
+    const token = getToken();
+    if (!token) return;
+    const sure = window.confirm(
+      `¿Eliminar definitivamente el buzón "${m.display_name}" (${m.email})?\n\nSe borrarán el buzón, sus accesos, su auditoría y la dirección. Los correos guardados en el servidor no se borran. No se puede deshacer.`
+    );
+    if (!sure) return;
+    setError(null);
+    setNotice(null);
+    try {
+      await adminDeleteMailbox(token, m.id);
+      if (selected?.id === m.id) setSelected(null);
+      setNotice(`Buzón "${m.display_name}" eliminado.`);
+      await loadMailboxes();
+    } catch (err) {
+      setError(errMsg(err));
+    }
+  }
+
   const flags = (p: AdminPermission) =>
     [p.can_read && "leer", p.can_send && "enviar", p.can_delete && "borrar", p.can_manage && "gestionar"]
       .filter(Boolean)
@@ -230,13 +270,32 @@ export default function AdminMailboxesPage() {
                 selected?.id === m.id ? "bg-line/30" : ""
               }`}
             >
-              <div className="min-w-0">
+              <div className={`min-w-0 ${m.status === "disabled" ? "opacity-50" : ""}`}>
                 <p className="text-sm text-paper">{m.display_name}</p>
                 <p className="text-xs text-muted break-all">{m.email}</p>
+                <p className="text-xs text-muted mt-1">
+                  {m.kind === "department" ? "Departamental" : "Personal"}
+                  {m.status === "disabled" ? " · Desactivado" : ""}
+                </p>
               </div>
-              <span className="text-xs text-muted shrink-0">
-                {m.kind === "department" ? "Departamental" : "Personal"}
-              </span>
+              {isSuper && (
+                <div className="flex flex-col gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => toggleStatus(m)}
+                    className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors"
+                  >
+                    {m.status === "disabled" ? "Activar" : "Desactivar"}
+                  </button>
+                  {m.status === "disabled" && (
+                    <button
+                      onClick={() => removeMailbox(m)}
+                      className="px-3 py-1.5 text-xs border border-red-400/50 text-red-400 hover:bg-red-400/10"
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>
