@@ -63,6 +63,7 @@ export interface AdminMailbox {
   display_name: string;
   email: string;
   owner_name: string | null;
+  status?: "active" | "disabled";
 }
 
 export interface AdminPermission {
@@ -247,6 +248,18 @@ export function adminCreateMailbox(
     { method: "POST", body: JSON.stringify(data) },
     token
   ).then((res) => res.mailbox);
+}
+
+export function adminSetMailboxStatus(token: string, mailboxId: number, status: "active" | "disabled") {
+  return request<{ mailbox: { id: number; status: string } }>(
+    `/admin/mailboxes/${mailboxId}`,
+    { method: "PATCH", body: JSON.stringify({ status }) },
+    token
+  );
+}
+
+export function adminDeleteMailbox(token: string, mailboxId: number) {
+  return request<{ success: boolean }>(`/admin/mailboxes/${mailboxId}`, { method: "DELETE" }, token);
 }
 
 // --- Admin: permisos sobre un buzón ---
