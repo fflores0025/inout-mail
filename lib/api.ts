@@ -55,6 +55,7 @@ export interface AdminAddress {
   id: number;
   email: string;
   maildir: string;
+  active?: boolean;
 }
 
 export interface AdminMailbox {
@@ -338,6 +339,18 @@ export function adminSetUserPassword(
     { method: "POST", body: JSON.stringify(data) },
     token
   );
+}
+
+export function adminSetAddressActive(token: string, addressId: number, active: boolean) {
+  return request<{ address: { id: number; active: boolean } }>(
+    `/admin/addresses/${addressId}`,
+    { method: "PATCH", body: JSON.stringify({ active }) },
+    token
+  );
+}
+
+export function adminDeleteAddress(token: string, addressId: number) {
+  return request<{ success: boolean }>(`/admin/addresses/${addressId}`, { method: "DELETE" }, token);
 }
 
 export function adminSetAddressPassword(token: string, addressId: number, password: string) {
