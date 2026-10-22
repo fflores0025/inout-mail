@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getMailboxes, Mailbox } from "@/lib/api";
+import { getMailboxes, Mailbox, ApiError } from "@/lib/api";
 import { getToken, clearToken, getUserFromToken } from "@/lib/session";
 import PushToggle, { pushLogoutCleanup } from "@/components/PushToggle";
+import { renewSessionIfNeeded } from "@/lib/refresh";
 
 export default function WebmailLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -21,9 +22,17 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
     const user = getUserFromToken();
     setIsAdmin(!!user?.is_global_admin);
 
+    renewSessionIfNeeded(token);
+
     getMailboxes(token)
       .then(setMailboxes)
-      .catch(() => router.replace("/login"));
+      .catch((err) => {
+        // Solo se cierra la sesion si el servidor dice que ya no vale
+        if (err instanceof ApiError && err.status === 401) {
+          clearToken();
+          router.replace("/login");
+        }
+      });
   }, [router]);
 
   async function handleLogout() {

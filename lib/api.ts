@@ -387,3 +387,9 @@ export function pushUnsubscribe(endpoint: string, token: string) {
 export function pushTest(token: string) {
   return request<{ success: boolean }>("/push/test", { method: "POST", body: "{}" }, token);
 }
+
+export function refreshToken(token: string) {
+  return request<{ token: string }>("/auth/refresh", { method: "POST", body: "{}" }, token).then(
+    (res) => res.token
+  );
+}

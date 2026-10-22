@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { login, ApiError } from "@/lib/api";
-import { setToken } from "@/lib/session";
+import { setToken, getToken } from "@/lib/session";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,6 +11,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (getToken()) router.replace("/inbox");
+  }, [router]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();

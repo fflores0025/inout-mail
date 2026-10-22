@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { getMe, Me } from "@/lib/api";
+import { getMe, Me, ApiError } from "@/lib/api";
 import { clearToken, getToken } from "@/lib/session";
 
 const ALL_TABS = [
@@ -32,9 +32,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
         setMe(user);
       })
-      .catch(() => {
-        clearToken();
-        router.replace("/login");
+      .catch((err) => {
+        // Solo se cierra la sesion si el servidor dice que ya no vale
+        if (err instanceof ApiError && err.status === 401) {
+          clearToken();
+          router.replace("/login");
+        }
       });
   }, [router]);
 
