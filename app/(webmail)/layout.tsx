@@ -95,6 +95,13 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
           </a>
         )}
 
+        <a
+          href="/account"
+          className="mx-4 mb-3 px-3 py-2 text-xs text-center text-muted border border-line hover:border-paper hover:text-paper transition-colors shrink-0"
+        >
+          Mi contraseña
+        </a>
+
         <button
           onClick={handleLogout}
           className="mx-4 mb-5 py-2 text-xs text-muted border border-line hover:border-paper hover:text-paper transition-colors shrink-0"
