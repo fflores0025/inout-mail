@@ -362,3 +362,28 @@ export function adminSetAddressPassword(token: string, addressId: number, passwo
 }
 
 export { ApiError };
+
+// ---------- Notificaciones push ----------
+export function getPushKey(token: string) {
+  return request<{ key: string }>("/push/public-key", {}, token).then((res) => res.key);
+}
+
+export function pushSubscribe(subscription: unknown, token: string) {
+  return request<{ success: boolean }>(
+    "/push/subscribe",
+    { method: "POST", body: JSON.stringify(subscription) },
+    token
+  );
+}
+
+export function pushUnsubscribe(endpoint: string, token: string) {
+  return request<{ success: boolean }>(
+    "/push/unsubscribe",
+    { method: "POST", body: JSON.stringify({ endpoint }) },
+    token
+  );
+}
+
+export function pushTest(token: string) {
+  return request<{ success: boolean }>("/push/test", { method: "POST", body: "{}" }, token);
+}

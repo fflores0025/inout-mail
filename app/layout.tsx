@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import "./globals.css";
 
@@ -17,6 +17,15 @@ const body = Inter({
 export const metadata: Metadata = {
   title: "InOut Mail",
   description: "Correo interno de InOut Media",
+  appleWebApp: {
+    capable: true,
+    title: "InOut Mail",
+    statusBarStyle: "black",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({

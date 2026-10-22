@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getMailboxes, Mailbox } from "@/lib/api";
 import { getToken, clearToken, getUserFromToken } from "@/lib/session";
+import PushToggle, { pushLogoutCleanup } from "@/components/PushToggle";
 
 export default function WebmailLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -25,7 +26,8 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
       .catch(() => router.replace("/login"));
   }, [router]);
 
-  function handleLogout() {
+  async function handleLogout() {
+    await pushLogoutCleanup();
     clearToken();
     router.replace("/login");
   }
@@ -94,6 +96,8 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
             Panel de administración
           </a>
         )}
+
+        <PushToggle />
 
         <a
           href="/account"
