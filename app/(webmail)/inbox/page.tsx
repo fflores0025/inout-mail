@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   getMailboxes,
@@ -202,9 +201,6 @@ function InboxContent() {
       <div className="px-6 sm:px-8 py-6 border-b border-line flex items-center justify-between">
         <h1 className="font-display text-2xl text-paper">Bandeja de entrada</h1>
         <div className="flex items-center gap-4 shrink-0">
-          <Link href="/account" className="text-sm text-muted hover:text-paper">
-            Mi contraseña
-          </Link>
           {mailboxId && (
             <button
               onClick={() => setCompose({ to: "", subject: "", body: "" })}
