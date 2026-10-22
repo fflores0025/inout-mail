@@ -393,3 +393,51 @@ export function refreshToken(token: string) {
     (res) => res.token
   );
 }
+
+// ---------- Grupos de reenvio ----------
+export interface GroupMember {
+  alias_id: number;
+  destination: string;
+  user_id: number | null;
+  full_name: string | null;
+  mailbox_exists: boolean;
+}
+
+export interface MailGroup {
+  id: number;
+  address: string;
+  name: string;
+  members: GroupMember[];
+}
+
+export function adminGetGroups(token: string) {
+  return request<{ groups: MailGroup[] }>("/admin/groups", {}, token).then((res) => res.groups);
+}
+
+export function adminCreateGroup(token: string, data: { name: string; address: string }) {
+  return request<{ group: MailGroup }>(
+    "/admin/groups",
+    { method: "POST", body: JSON.stringify(data) },
+    token
+  ).then((res) => res.group);
+}
+
+export function adminDeleteGroup(token: string, groupId: number) {
+  return request<{ success: boolean }>(`/admin/groups/${groupId}`, { method: "DELETE" }, token);
+}
+
+export function adminAddGroupMember(token: string, groupId: number, userId: number) {
+  return request<{ members: GroupMember[] }>(
+    `/admin/groups/${groupId}/members`,
+    { method: "POST", body: JSON.stringify({ user_id: userId }) },
+    token
+  ).then((res) => res.members);
+}
+
+export function adminRemoveGroupMember(token: string, groupId: number, aliasId: number) {
+  return request<{ members: GroupMember[] }>(
+    `/admin/groups/${groupId}/members/${aliasId}`,
+    { method: "DELETE" },
+    token
+  ).then((res) => res.members);
+}

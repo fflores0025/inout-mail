@@ -9,6 +9,7 @@ import { clearToken, getToken } from "@/lib/session";
 const ALL_TABS = [
   { href: "/admin/users", label: "Usuarios", superOnly: true },
   { href: "/admin/addresses", label: "Direcciones", superOnly: true },
+  { href: "/admin/groups", label: "Grupos", superOnly: true },
   { href: "/admin/mailboxes", label: "Buzones", superOnly: false },
   { href: "/admin/audit", label: "Auditoría", superOnly: false },
 ];
