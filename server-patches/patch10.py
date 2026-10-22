@@ -7,6 +7,8 @@ if 'SESION LARGA (patch10)' in s:
     sys.exit('Ya estaba aplicado, no hago nada')
 if 'NOTIFICACIONES PUSH (patch9)' not in s:
     sys.exit('Falta aplicar antes el parche 9. No se ha cambiado nada.')
+if s.count('const start = async') != 1:
+    sys.exit('NO SE ENCONTRO const start. No se ha cambiado nada.')
 if s.count('app.setErrorHandler(') != 1:
     sys.exit('NO SE ENCONTRO setErrorHandler. No se ha cambiado nada.')
 
@@ -32,6 +34,9 @@ app.addHook('onSend', async (request: any, reply: any, payload: any) => {
   return payload;
 });
 
+"""
+
+ROUTE = r"""// ===== RENOVAR SESION (patch10) =====
 app.post('/auth/refresh', { preHandler: [(app as any).authenticate] }, async (request: any) => {
   const { iat, exp, role, ...rest } = request.user;
   return { token: (app as any).jwt.sign(rest, { expiresIn: '90d' }) };
@@ -40,6 +45,7 @@ app.post('/auth/refresh', { preHandler: [(app as any).authenticate] }, async (re
 """
 
 s = s.replace('app.setErrorHandler(', HOOK + 'app.setErrorHandler(', 1)
+s = s.replace('const start = async', ROUTE + 'const start = async', 1)
 
 # Registros para ver por que llegan (o no) los avisos de correo
 def rep(old, new):
