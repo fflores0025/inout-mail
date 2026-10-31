@@ -462,12 +462,13 @@ export interface MailboxSignature {
   display_name: string;
   email: string;
   signature: string;
+  signature_only?: boolean;
 }
 
-export function adminSetMailboxSignature(token: string, mailboxId: number, signature: string) {
+export function adminSetMailboxSignature(token: string, mailboxId: number, signature: string, signatureOnly = false) {
   return request<{ success: boolean }>(
     `/admin/mailboxes/${mailboxId}/signature`,
-    { method: "PATCH", body: JSON.stringify({ signature }) },
+    { method: "PATCH", body: JSON.stringify({ signature, signature_only: signatureOnly }) },
     token
   );
 }

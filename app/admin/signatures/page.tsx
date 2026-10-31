@@ -29,6 +29,7 @@ export default function AdminSignaturesPage() {
   const [footer, setFooter] = useState("");
   const [boxes, setBoxes] = useState<MailboxSignature[]>([]);
   const [boxSigs, setBoxSigs] = useState<Record<number, string>>({});
+  const [boxOnly, setBoxOnly] = useState<Record<number, boolean>>({});
   const [groups, setGroups] = useState<{ id: number; name: string; address: string; signature: string }[]>([]);
   const [groupSigs, setGroupSigs] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
@@ -57,6 +58,7 @@ export default function AdminSignaturesPage() {
       setGroups(gl);
       setGroupSigs(Object.fromEntries(gl.map((g) => [g.id, g.signature || ""])));
       setBoxSigs(Object.fromEntries(list.map((m) => [m.id, m.signature || ""])));
+      setBoxOnly(Object.fromEntries(list.map((m) => [m.id, !!m.signature_only])));
     } catch (err) {
       setError(errMsg(err));
     } finally {
@@ -104,7 +106,7 @@ export default function AdminSignaturesPage() {
     setError(null);
     setNotice(null);
     try {
-      await adminSetMailboxSignature(token, m.id, boxSigs[m.id] || "");
+      await adminSetMailboxSignature(token, m.id, boxSigs[m.id] || "", !!boxOnly[m.id]);
       setNotice(`Firma de ${m.display_name} guardada.`);
     } catch (err) {
       setError(errMsg(err));
@@ -176,6 +178,14 @@ export default function AdminSignaturesPage() {
                 placeholder="Ej. Departamento Comercial de InOut Media"
                 className={`${input} resize-none`}
               />
+              <label className="flex items-center gap-2 text-xs text-muted cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={!!boxOnly[m.id]}
+                  onChange={(e) => setBoxOnly((p) => ({ ...p, [m.id]: e.target.checked }))}
+                />
+                Solo esta firma (sin la firma personal de quien envía)
+              </label>
               <button
                 onClick={() => saveBoxSig(m)}
                 className="px-4 py-2 text-sm border border-line text-paper hover:border-paper transition-colors"
