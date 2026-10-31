@@ -10,6 +10,8 @@ import {
   sendMessage,
   getMySignature,
   getSenders,
+  getContacts,
+  Contacts,
   Sender,
   Message,
   FullMessage,
@@ -300,6 +302,7 @@ function ComposeModal({
   const [choice, setChoice] = useState(false);
   const [askPersonal, setAskPersonal] = useState(false);
   const [senders, setSenders] = useState<Sender[]>([]);
+  const [contacts, setContacts] = useState<Contacts>({ recent: [], directory: [] });
   const [fromGroup, setFromGroup] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -326,6 +329,9 @@ function ComposeModal({
     getSenders(token)
       .then(setSenders)
       .catch(() => setSenders([]));
+    getContacts(token)
+      .then(setContacts)
+      .catch(() => {});
   }, []);
 
   const totalBytes = attachments.reduce((sum, a) => sum + a.size, 0);
@@ -421,14 +427,7 @@ function ComposeModal({
               ))}
             </select>
           )}
-          <input
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-            type="email"
-            placeholder="Para"
-            required
-            className="w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper"
-          />
+          <RecipientInput value={to} onChange={setTo} contacts={contacts} />
           <input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
@@ -530,6 +529,92 @@ function ComposeModal({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+
+function RecipientInput({
+  value,
+  onChange,
+  contacts,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  contacts: Contacts;
+}) {
+  const [open, setOpen] = useState(false);
+  const parts = value.split(/[,;]/);
+  const last = (parts[parts.length - 1] || "").trim().toLowerCase();
+  const before = parts.slice(0, -1).map((x) => x.trim()).filter(Boolean);
+  const already = new Set(before.map((x) => x.toLowerCase()));
+
+  const match = (email: string, name?: string) =>
+    !already.has(email) && (!last || email.includes(last) || (name || "").toLowerCase().includes(last));
+
+  const recent = contacts.recent.filter((e) => match(e)).slice(0, 8);
+  const recentSet = new Set(contacts.recent);
+  const directory = contacts.directory.filter((c) => !recentSet.has(c.email) && match(c.email, c.name));
+  const hasAny = recent.length > 0 || directory.length > 0;
+
+  function pick(email: string) {
+    onChange([...before, email].join(", "));
+    setOpen(false);
+  }
+
+  const row =
+    "w-full text-left px-3 py-2 text-sm text-paper hover:bg-line/40 focus:bg-line/40 focus:outline-none";
+
+  return (
+    <div className="relative">
+      <input
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        type="text"
+        inputMode="email"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        placeholder="Para (varias direcciones separadas por coma)"
+        required
+        className="w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper"
+      />
+      {open && hasAny && (
+        <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-60 overflow-y-auto bg-ink border border-line">
+          {recent.length > 0 && (
+            <>
+              <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted">Enviados recientemente</p>
+              {recent.map((e) => (
+                <button key={e} type="button" onMouseDown={(ev) => ev.preventDefault()} onClick={() => pick(e)} className={row}>
+                  {e}
+                </button>
+              ))}
+            </>
+          )}
+          {directory.length > 0 && (
+            <>
+              <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted">Directorio de InOut Media</p>
+              {directory.map((c) => (
+                <button
+                  key={c.email}
+                  type="button"
+                  onMouseDown={(ev) => ev.preventDefault()}
+                  onClick={() => pick(c.email)}
+                  className={row}
+                >
+                  {c.name}
+                  <span className="block text-xs text-muted break-all">{c.email}</span>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

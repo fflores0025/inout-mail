@@ -554,3 +554,14 @@ export function adminUpdateGroup(token: string, groupId: number, data: { name?: 
     token
   );
 }
+
+// --- Sugerencias de destinatarios ---
+
+export interface Contacts {
+  recent: string[];
+  directory: { name: string; email: string }[];
+}
+
+export function getContacts(token: string) {
+  return request<Contacts>("/me/contacts", {}, token);
+}
