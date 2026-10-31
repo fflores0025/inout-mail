@@ -8,9 +8,7 @@ import {
   adminCreatePersonalMailbox,
   adminCreateUser,
   adminDeleteUser,
-  adminGetSignatures,
   adminGetUsers,
-  adminSetJobTitle,
   adminSetUserName,
   adminSetUserPassword,
   adminUpdateUser,
@@ -43,8 +41,6 @@ export default function AdminUsersPage() {
   const [pwUserId, setPwUserId] = useState<number | null>(null);
   const [editId, setEditId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
-  const [editTitle, setEditTitle] = useState("");
-  const [titles, setTitles] = useState<Record<number, string>>({});
 
   const [fullName, setFullName] = useState("");
   const [local, setLocal] = useState("");
@@ -61,9 +57,6 @@ export default function AdminUsersPage() {
     if (!token) return;
     try {
       setUsers(await adminGetUsers(token));
-      adminGetSignatures(token)
-        .then((d) => setTitles(Object.fromEntries(d.users.map((x) => [x.id, x.job_title || ""]))))
-        .catch(() => {});
     } catch (err) {
       setError(errMsg(err));
     } finally {
@@ -161,7 +154,6 @@ export default function AdminUsersPage() {
     }
     setEditId(u.id);
     setEditName(u.full_name);
-    setEditTitle(titles[u.id] || "");
     setPwUserId(null);
     setError(null);
     setNotice(null);
@@ -172,9 +164,8 @@ export default function AdminUsersPage() {
       u,
       async (t) => {
         if (editName.trim() !== u.full_name) await adminSetUserName(t, u.id, editName.trim());
-        if (editTitle.trim() !== (titles[u.id] || "")) await adminSetJobTitle(t, u.id, editTitle.trim());
       },
-      "Cambios guardados."
+      "Nombre guardado."
     );
   }
 
@@ -271,21 +262,16 @@ export default function AdminUsersPage() {
                         placeholder="Nombre completo"
                         className={input}
                       />
-                      <textarea
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        rows={3}
-                        maxLength={600}
-                        placeholder={"Cargo y datos para su firma (varias líneas)\nEj. Extensión 101"}
-                        className={`${input} resize-none`}
-                      />
                       <button
                         className={btn}
                         disabled={busy || !editName.trim()}
                         onClick={() => saveProfile(u)}
                       >
-                        Guardar nombre y cargo
+                        Guardar nombre
                       </button>
+                      <p className="text-xs text-muted">
+                        El cargo y la firma se gestionan en la pestaña Firmas.
+                      </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <select
