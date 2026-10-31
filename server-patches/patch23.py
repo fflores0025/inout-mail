@@ -32,12 +32,12 @@ for head in ["app.get('/mailboxes/:id/messages',", "app.get('/mailboxes/:id/mess
 # 2) Copia en Enviados al enviar
 i, j = segment("app.post('/mailboxes/:id/send'")
 seg = s[i:j]
-m = list(re.finditer(r"return\s*\{\s*sent:\s*true\s*\};?", seg))
+m = list(re.finditer(r"\[mailboxId, userId, 'sent', JSON\.stringify\(.*?\)\]\s*\);\n", seg, re.S))
 if len(m) != 1:
     sys.exit('NO SE ENCONTRO el final del envio. No se ha cambiado nada.')
 if 'const rawMessage' not in seg:
     sys.exit('NO SE ENCONTRO rawMessage en el envio. No se ha cambiado nada.')
-seg = seg[:m[0].start()] + "saveToSent(Number(request.params.id), rawMessage).catch(() => {});\n  " + seg[m[0].start():]
+seg = seg[:m[0].end()] + "  saveToSent(Number(mailboxId), rawMessage).catch(() => {});\n" + seg[m[0].end():]
 s = s[:i] + seg + s[j:]
 
 CODE = r"""// ===== CARPETAS (patch23) =====
