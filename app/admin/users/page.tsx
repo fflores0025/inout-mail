@@ -8,7 +8,10 @@ import {
   adminCreatePersonalMailbox,
   adminCreateUser,
   adminDeleteUser,
+  adminGetSignatures,
   adminGetUsers,
+  adminSetJobTitle,
+  adminSetUserName,
   adminSetUserPassword,
   adminUpdateUser,
   getMe,
@@ -38,6 +41,10 @@ export default function AdminUsersPage() {
   const [busyId, setBusyId] = useState<number | null>(null);
   const [myId, setMyId] = useState<number | null>(null);
   const [pwUserId, setPwUserId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const [titles, setTitles] = useState<Record<number, string>>({});
 
   const [fullName, setFullName] = useState("");
   const [local, setLocal] = useState("");
@@ -54,6 +61,9 @@ export default function AdminUsersPage() {
     if (!token) return;
     try {
       setUsers(await adminGetUsers(token));
+      adminGetSignatures(token)
+        .then((d) => setTitles(Object.fromEntries(d.users.map((x) => [x.id, x.job_title || ""]))))
+        .catch(() => {});
     } catch (err) {
       setError(errMsg(err));
     } finally {
@@ -127,8 +137,45 @@ export default function AdminUsersPage() {
   }
 
   function remove(u: AdminUser) {
-    if (!window.confirm(`¿Eliminar definitivamente a ${u.full_name}? No se puede deshacer.`)) return;
-    run(u, (t) => adminDeleteUser(t, u.id));
+    if (
+      !window.confirm(
+        `¿Eliminar definitivamente a ${u.full_name}? Perderá el acceso y sus permisos. No se puede deshacer.`
+      )
+    )
+      return;
+    run(
+      u,
+      async (t) => {
+        if (u.status !== "disabled") await adminUpdateUser(t, u.id, { status: "disabled" });
+        await adminDeleteUser(t, u.id);
+        setEditId(null);
+      },
+      `${u.full_name} eliminado.`
+    );
+  }
+
+  function toggleEdit(u: AdminUser) {
+    if (editId === u.id) {
+      setEditId(null);
+      return;
+    }
+    setEditId(u.id);
+    setEditName(u.full_name);
+    setEditTitle(titles[u.id] || "");
+    setPwUserId(null);
+    setError(null);
+    setNotice(null);
+  }
+
+  function saveProfile(u: AdminUser) {
+    run(
+      u,
+      async (t) => {
+        if (editName.trim() !== u.full_name) await adminSetUserName(t, u.id, editName.trim());
+        if (editTitle.trim() !== (titles[u.id] || "")) await adminSetJobTitle(t, u.id, editTitle.trim());
+      },
+      "Cambios guardados."
+    );
   }
 
   function createMailbox(u: AdminUser) {
@@ -210,89 +257,119 @@ export default function AdminUsersPage() {
                     {u.personal_mailbox_id ? "Con buzón personal" : "Sin buzón personal"}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={u.role}
-                    disabled={busy || isMe}
-                    onChange={(e) => changeRole(u, e.target.value as Role)}
-                    className="bg-ink border border-line px-2 py-1.5 text-xs text-paper disabled:opacity-40"
-                  >
-                    <option value="employee">Empleado</option>
-                    <option value="admin">Admin</option>
-                    <option value="super_admin">Super admin</option>
-                  </select>
-                  <button
-                    className={btn}
-                    disabled={busy}
-                    onClick={() => setPwUserId(pwUserId === u.id ? null : u.id)}
-                  >
-                    Contraseña
+                <div>
+                  <button className={btn} onClick={() => toggleEdit(u)}>
+                    {editId === u.id ? "Cerrar" : "Editar"}
                   </button>
-                  {!u.personal_mailbox_id && (
-                    <button className={btn} disabled={busy} onClick={() => createMailbox(u)}>
-                      Crear buzón personal
-                    </button>
-                  )}
-                  {disabled ? (
-                    <>
+                </div>
+                {editId === u.id && (
+                  <div className="border border-line p-4 space-y-4">
+                    <div className="space-y-2">
+                      <input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="Nombre completo"
+                        className={input}
+                      />
+                      <input
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        placeholder="Cargo (aparece en su firma)"
+                        className={input}
+                      />
+                      <button
+                        className={btn}
+                        disabled={busy || !editName.trim()}
+                        onClick={() => saveProfile(u)}
+                      >
+                        Guardar nombre y cargo
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={u.role}
+                        disabled={busy || isMe}
+                        onChange={(e) => changeRole(u, e.target.value as Role)}
+                        className="bg-ink border border-line px-2 py-1.5 text-xs text-paper disabled:opacity-40"
+                      >
+                        <option value="employee">Empleado</option>
+                        <option value="admin">Admin</option>
+                        <option value="super_admin">Super admin</option>
+                      </select>
                       <button
                         className={btn}
                         disabled={busy}
-                        onClick={() => run(u, (t) => adminUpdateUser(t, u.id, { status: "active" }))}
+                        onClick={() => setPwUserId(pwUserId === u.id ? null : u.id)}
                       >
-                        Activar
+                        Contraseña
                       </button>
-                      <button
-                        className={`${btn} !text-red-400 !border-red-400/50`}
-                        disabled={busy}
-                        onClick={() => remove(u)}
-                      >
-                        Eliminar
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      className={btn}
-                      disabled={busy || isMe}
-                      onClick={() => run(u, (t) => adminUpdateUser(t, u.id, { status: "disabled" }))}
-                    >
-                      Desactivar
-                    </button>
-                  )}
-                </div>
-                {pwUserId === u.id && (
-                  <div className="border border-line p-4">
-                    <p className="text-xs text-muted mb-3">
-                      Nueva contraseña para {u.full_name}
-                    </p>
-                    <PasswordForm
-                      askCurrent={false}
-                      mailboxLabel={
-                        u.personal_mailbox_id
-                          ? "Cambiar también la contraseña de su buzón personal"
-                          : undefined
-                      }
-                      submitLabel="Guardar contraseña"
-                      onCancel={() => setPwUserId(null)}
-                      onSubmit={async (v) => {
-                        const token = getToken();
-                        if (!token) return;
-                        try {
-                          const res = await adminSetUserPassword(token, u.id, {
-                            password: v.next,
-                            also_mailbox: !!u.personal_mailbox_id && v.alsoMailbox,
-                          });
-                          setNotice(
-                            res.mailbox_updated
-                              ? `Contraseña de ${u.full_name} cambiada (acceso y buzón).`
-                              : `Contraseña de acceso de ${u.full_name} cambiada.`
-                          );
-                          setPwUserId(null);
-                        } catch (err) {
-                          throw new Error(errMsg(err));
-                        }
-                      }}
-                    />
+                      {!u.personal_mailbox_id && (
+                        <button className={btn} disabled={busy} onClick={() => createMailbox(u)}>
+                          Crear buzón personal
+                        </button>
+                      )}
+                      {disabled ? (
+                        <button
+                          className={btn}
+                          disabled={busy}
+                          onClick={() => run(u, (t) => adminUpdateUser(t, u.id, { status: "active" }))}
+                        >
+                          Activar
+                        </button>
+                      ) : (
+                        <button
+                          className={btn}
+                          disabled={busy || isMe}
+                          onClick={() => run(u, (t) => adminUpdateUser(t, u.id, { status: "disabled" }))}
+                        >
+                          Desactivar
+                        </button>
+                      )}
+                    </div>
+                    {pwUserId === u.id && (
+                      <div className="border border-line p-4">
+                        <p className="text-xs text-muted mb-3">Nueva contraseña para {u.full_name}</p>
+                        <PasswordForm
+                          askCurrent={false}
+                          mailboxLabel={
+                            u.personal_mailbox_id
+                              ? "Cambiar también la contraseña de su buzón personal"
+                              : undefined
+                          }
+                          submitLabel="Guardar contraseña"
+                          onCancel={() => setPwUserId(null)}
+                          onSubmit={async (v) => {
+                            const token = getToken();
+                            if (!token) return;
+                            try {
+                              const res = await adminSetUserPassword(token, u.id, {
+                                password: v.next,
+                                also_mailbox: !!u.personal_mailbox_id && v.alsoMailbox,
+                              });
+                              setNotice(
+                                res.mailbox_updated
+                                  ? `Contraseña de ${u.full_name} cambiada (acceso y buzón).`
+                                  : `Contraseña de acceso de ${u.full_name} cambiada.`
+                              );
+                              setPwUserId(null);
+                            } catch (err) {
+                              throw new Error(errMsg(err));
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+                    {!isMe && (
+                      <div className="pt-3 border-t border-line">
+                        <button
+                          className={`${btn} !text-red-400 !border-red-400/50`}
+                          disabled={busy}
+                          onClick={() => remove(u)}
+                        >
+                          Eliminar usuario
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </li>

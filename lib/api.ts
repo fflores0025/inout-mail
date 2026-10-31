@@ -479,3 +479,29 @@ export function adminSetJobTitle(token: string, userId: number, jobTitle: string
     token
   );
 }
+
+// --- Admin: editar nombres y grupos ---
+
+export function adminSetUserName(token: string, userId: number, fullName: string) {
+  return request<{ user: { id: number; full_name: string } }>(
+    `/admin/users/${userId}/name`,
+    { method: "PATCH", body: JSON.stringify({ full_name: fullName }) },
+    token
+  );
+}
+
+export function adminSetMailboxName(token: string, mailboxId: number, displayName: string) {
+  return request<{ mailbox: { id: number; display_name: string } }>(
+    `/admin/mailboxes/${mailboxId}/name`,
+    { method: "PATCH", body: JSON.stringify({ display_name: displayName }) },
+    token
+  );
+}
+
+export function adminUpdateGroup(token: string, groupId: number, data: { name?: string; address?: string }) {
+  return request<{ group: { id: number; name: string; address: string } }>(
+    `/admin/groups/${groupId}`,
+    { method: "PATCH", body: JSON.stringify(data) },
+    token
+  );
+}

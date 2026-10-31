@@ -24,6 +24,7 @@ export default function AdminAddressesPage() {
   const [local, setLocal] = useState("");
   const [password, setPassword] = useState("");
   const [creating, setCreating] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
 
   const errMsg = (err: unknown) =>
     err instanceof ApiError ? err.message : "No se pudo conectar con el servidor";
@@ -92,12 +93,21 @@ export default function AdminAddressesPage() {
     if (!sure) return;
     setError(null);
     setNotice(null);
+    const wasActive = a.active !== false;
     try {
-      await adminDeleteAddress(token, a.id);
+      if (wasActive) await adminSetAddressActive(token, a.id, false);
+      try {
+        await adminDeleteAddress(token, a.id);
+      } catch (err) {
+        if (wasActive) await adminSetAddressActive(token, a.id, true).catch(() => {});
+        throw err;
+      }
+      setEditId(null);
       setNotice(`Dirección ${a.email} eliminada.`);
       await load();
     } catch (err) {
       setError(errMsg(err));
+      await load();
     }
   }
 
@@ -147,33 +157,45 @@ export default function AdminAddressesPage() {
         {loading && <p className="text-sm text-muted">Cargando…</p>}
         <ul className="divide-y divide-line border-y border-line">
           {addresses.map((a) => (
-            <li key={a.id} className="py-3 flex items-center justify-between gap-3">
-              <div className={`min-w-0 ${a.active === false ? "opacity-50" : ""}`}>
-                <p className="text-sm text-paper break-all">{a.email}</p>
-                {a.active === false && <p className="text-xs text-muted mt-1">Desactivada</p>}
-              </div>
-              <div className="flex flex-wrap justify-end gap-2 shrink-0">
+            <li key={a.id} className="py-3 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className={`min-w-0 ${a.active === false ? "opacity-50" : ""}`}>
+                  <p className="text-sm text-paper break-all">{a.email}</p>
+                  {a.active === false && <p className="text-xs text-muted mt-1">Desactivada</p>}
+                </div>
                 <button
-                  onClick={() => changePassword(a)}
-                  className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors"
+                  onClick={() => setEditId(editId === a.id ? null : a.id)}
+                  className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors shrink-0"
                 >
-                  Contraseña
+                  {editId === a.id ? "Cerrar" : "Editar"}
                 </button>
-                <button
-                  onClick={() => toggleActive(a)}
-                  className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors"
-                >
-                  {a.active === false ? "Activar" : "Desactivar"}
-                </button>
-                {a.active === false && (
-                  <button
-                    onClick={() => removeAddress(a)}
-                    className="px-3 py-1.5 text-xs border border-red-400/50 text-red-400 hover:bg-red-400/10"
-                  >
-                    Eliminar
-                  </button>
-                )}
               </div>
+              {editId === a.id && (
+                <div className="border border-line p-3 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => changePassword(a)}
+                      className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors"
+                    >
+                      Cambiar contraseña
+                    </button>
+                    <button
+                      onClick={() => toggleActive(a)}
+                      className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors"
+                    >
+                      {a.active === false ? "Activar" : "Desactivar"}
+                    </button>
+                  </div>
+                  <div className="pt-3 border-t border-line">
+                    <button
+                      onClick={() => removeAddress(a)}
+                      className="px-3 py-1.5 text-xs border border-red-400/50 text-red-400 hover:bg-red-400/10"
+                    >
+                      Eliminar dirección
+                    </button>
+                  </div>
+                </div>
+              )}
             </li>
           ))}
         </ul>

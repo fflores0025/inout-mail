@@ -13,6 +13,7 @@ import {
   adminGetPermissions,
   adminGetUsers,
   adminRevokePermission,
+  adminSetMailboxName,
   adminSetMailboxStatus,
   adminSetPermission,
   getMe,
@@ -49,6 +50,10 @@ export default function AdminMailboxesPage() {
   const [canSend, setCanSend] = useState(true);
   const [canDelete, setCanDelete] = useState(false);
   const [canManage, setCanManage] = useState(false);
+
+  // editar
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
 
   const isSuper = me?.role === "super_admin";
   const errMsg = (err: unknown) =>
@@ -183,10 +188,44 @@ export default function AdminMailboxesPage() {
     if (!sure) return;
     setError(null);
     setNotice(null);
+    const wasActive = m.status !== "disabled";
     try {
-      await adminDeleteMailbox(token, m.id);
+      if (wasActive) await adminSetMailboxStatus(token, m.id, "disabled");
+      try {
+        await adminDeleteMailbox(token, m.id);
+      } catch (err) {
+        if (wasActive) await adminSetMailboxStatus(token, m.id, "active").catch(() => {});
+        throw err;
+      }
       if (selected?.id === m.id) setSelected(null);
+      setEditId(null);
       setNotice(`Buzón "${m.display_name}" eliminado.`);
+      await loadMailboxes();
+    } catch (err) {
+      setError(errMsg(err));
+      await loadMailboxes();
+    }
+  }
+
+  function toggleEdit(m: AdminMailbox) {
+    if (editId === m.id) {
+      setEditId(null);
+      return;
+    }
+    setEditId(m.id);
+    setEditName(m.display_name);
+    setError(null);
+    setNotice(null);
+  }
+
+  async function saveName(m: AdminMailbox) {
+    const token = getToken();
+    if (!token) return;
+    setError(null);
+    setNotice(null);
+    try {
+      await adminSetMailboxName(token, m.id, editName.trim());
+      setNotice("Nombre guardado.");
       await loadMailboxes();
     } catch (err) {
       setError(errMsg(err));
@@ -263,13 +302,11 @@ export default function AdminMailboxesPage() {
         )}
         <ul className="divide-y divide-line border-y border-line">
           {mailboxes.map((m) => (
-            <li
-              key={m.id}
+            <li key={m.id} className={selected?.id === m.id ? "bg-line/30" : ""}>
+             <div
               onClick={() => select(m)}
-              className={`py-4 px-1 flex items-center justify-between gap-4 cursor-pointer hover:bg-line/30 ${
-                selected?.id === m.id ? "bg-line/30" : ""
-              }`}
-            >
+              className="py-4 px-1 flex items-center justify-between gap-4 cursor-pointer hover:bg-line/30"
+             >
               <div className={`min-w-0 ${m.status === "disabled" ? "opacity-50" : ""}`}>
                 <p className="text-sm text-paper">{m.display_name}</p>
                 <p className="text-xs text-muted break-all">{m.email}</p>
@@ -279,21 +316,50 @@ export default function AdminMailboxesPage() {
                 </p>
               </div>
               {isSuper && (
-                <div className="flex flex-col gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                   <button
-                    onClick={() => toggleStatus(m)}
+                    onClick={() => toggleEdit(m)}
                     className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors"
                   >
-                    {m.status === "disabled" ? "Activar" : "Desactivar"}
+                    {editId === m.id ? "Cerrar" : "Editar"}
                   </button>
-                  {m.status === "disabled" && (
+                </div>
+              )}
+             </div>
+              {isSuper && editId === m.id && (
+                <div className="border border-line p-3 mb-3 space-y-3" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Nombre del buzón"
+                    className={input}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => saveName(m)}
+                      disabled={!editName.trim() || editName.trim() === m.display_name}
+                      className="px-3 py-1.5 text-xs border border-paper text-paper hover:bg-paper hover:text-ink transition-colors disabled:opacity-40"
+                    >
+                      Guardar nombre
+                    </button>
+                    <button
+                      onClick={() => toggleStatus(m)}
+                      className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors"
+                    >
+                      {m.status === "disabled" ? "Activar" : "Desactivar"}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted">
+                    Toca el buzón (fuera de Editar) para gestionar quién tiene acceso.
+                  </p>
+                  <div className="pt-3 border-t border-line">
                     <button
                       onClick={() => removeMailbox(m)}
                       className="px-3 py-1.5 text-xs border border-red-400/50 text-red-400 hover:bg-red-400/10"
                     >
-                      Eliminar
+                      Eliminar buzón
                     </button>
-                  )}
+                  </div>
                 </div>
               )}
             </li>

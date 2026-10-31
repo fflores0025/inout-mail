@@ -11,6 +11,7 @@ import {
   adminGetGroups,
   adminGetUsers,
   adminRemoveGroupMember,
+  adminUpdateGroup,
 } from "@/lib/api";
 import { getToken } from "@/lib/session";
 import { EmailInput, fullEmail } from "@/components/EmailInput";
@@ -28,6 +29,9 @@ export default function AdminGroupsPage() {
   const [local, setLocal] = useState("");
   const [creating, setCreating] = useState(false);
   const [pick, setPick] = useState<Record<number, string>>({});
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editLocal, setEditLocal] = useState("");
 
   const errMsg = (err: unknown) =>
     err instanceof ApiError ? err.message : "No se pudo conectar con el servidor";
@@ -118,6 +122,34 @@ export default function AdminGroupsPage() {
     }
   }
 
+  function startEdit(g: MailGroup) {
+    if (editId === g.id) {
+      setEditId(null);
+      return;
+    }
+    setEditId(g.id);
+    setEditName(g.name);
+    setEditLocal(g.address.split("@")[0]);
+    setError(null);
+    setNotice(null);
+  }
+
+  async function saveEdit(g: MailGroup) {
+    const token = getToken();
+    if (!token) return;
+    setError(null);
+    setNotice(null);
+    try {
+      const next = fullEmail(editLocal);
+      const res = await adminUpdateGroup(token, g.id, { name: editName, address: next });
+      setNotice(`Grupo guardado (${res.group.address}).`);
+      setEditId(null);
+      await load();
+    } catch (err) {
+      setError(errMsg(err));
+    }
+  }
+
   const candidates = users.filter((u) => u.personal_mailbox_id && u.status !== "disabled");
 
   return (
@@ -163,12 +195,42 @@ export default function AdminGroupsPage() {
                   <p className="text-xs text-muted break-all">{g.address}</p>
                 </div>
                 <button
-                  onClick={() => removeGroup(g)}
-                  className="px-3 py-1.5 text-xs border border-red-400/50 text-red-400 hover:bg-red-400/10 shrink-0"
+                  onClick={() => startEdit(g)}
+                  className="px-3 py-1.5 text-xs border border-line text-paper hover:border-paper transition-colors shrink-0"
                 >
-                  Eliminar grupo
+                  {editId === g.id ? "Cerrar" : "Editar"}
                 </button>
               </div>
+
+              {editId === g.id && (
+                <div className="border border-line p-3 space-y-3">
+                  <input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Nombre del grupo"
+                    className={input}
+                  />
+                  <EmailInput value={editLocal} onChange={setEditLocal} placeholder="direccion-del-grupo" />
+                  <p className="text-xs text-muted">
+                    Si cambias la dirección, la antigua deja de funcionar y los miembros se mantienen.
+                  </p>
+                  <div className="flex flex-wrap gap-2 justify-between">
+                    <button
+                      onClick={() => saveEdit(g)}
+                      disabled={!editName.trim() || !editLocal.trim()}
+                      className="px-4 py-2 text-sm border border-paper text-paper hover:bg-paper hover:text-ink transition-colors disabled:opacity-40"
+                    >
+                      Guardar cambios
+                    </button>
+                    <button
+                      onClick={() => removeGroup(g)}
+                      className="px-3 py-2 text-xs border border-red-400/50 text-red-400 hover:bg-red-400/10"
+                    >
+                      Eliminar grupo
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <ul className="divide-y divide-line border-y border-line">
                 {g.members.length === 0 && (
