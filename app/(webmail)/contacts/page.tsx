@@ -8,6 +8,7 @@ import {
   createContact,
   deleteContact,
   getContactList,
+  setContactShared,
   updateContact,
 } from "@/lib/api";
 import { getToken } from "@/lib/session";
@@ -87,6 +88,7 @@ export default function ContactsPage() {
   const [q, setQ] = useState("");
   const [adding, setAdding] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
+  const [tab, setTab] = useState<"shared" | "private">("shared");
 
   const errMsg = (err: unknown) => (err instanceof ApiError ? err.message : "No se pudo conectar con el servidor");
 
@@ -108,11 +110,12 @@ export default function ContactsPage() {
 
   const filtered = useMemo(() => {
     const t = q.trim().toLowerCase();
-    if (!t) return contacts;
-    return contacts.filter((c) =>
+    const inTab = contacts.filter((c) => (tab === "shared" ? c.shared : !c.shared));
+    if (!t) return inTab;
+    return inTab.filter((c) =>
       [c.name, c.company, c.job_title, c.phone, c.owner_name, ...c.emails].join(" ").toLowerCase().includes(t)
     );
-  }, [contacts, q]);
+  }, [contacts, q, tab]);
 
   async function run(fn: (token: string) => Promise<unknown>, ok: string) {
     const token = getToken();
@@ -154,12 +157,34 @@ export default function ContactsPage() {
             submitLabel="Guardar contacto"
             onCancel={() => setAdding(false)}
             onSubmit={async (v) => {
-              await run((t) => createContact(t, v), "Contacto guardado.").catch(() => {});
+              await run(
+                (t) => createContact(t, { ...v, shared: tab === "shared" }),
+                tab === "shared" ? "Contacto común guardado." : "Contacto privado guardado."
+              ).catch(() => {});
               setAdding(false);
             }}
           />
         </div>
       )}
+
+      <div className="flex border border-line text-sm">
+        {(["shared", "private"] as const).map((k) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={`flex-1 py-2 transition-colors ${
+              tab === k ? "bg-paper text-ink" : "text-muted hover:text-paper"
+            }`}
+          >
+            {k === "shared" ? "Comunes" : "Privados"}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-muted -mt-3">
+        {tab === "shared"
+          ? "Los ven todos los usuarios de InOut Mail."
+          : "Solo los ves tú. Pulsa Compartir para pasar uno a Comunes."}
+      </p>
 
       <input
         value={q}
@@ -172,8 +197,8 @@ export default function ContactsPage() {
       {!loading && filtered.length === 0 && (
         <p className="text-sm text-muted">
           {contacts.length === 0
-            ? "Todavía no hay contactos. Se añaden solos al escribir a direcciones externas nuevas."
-            : "Sin resultados."}
+            ? "Todavía no hay contactos. Se añaden solos (como privados) al escribir a direcciones externas nuevas."
+            : "Sin resultados en esta lista."}
         </p>
       )}
 
@@ -193,13 +218,28 @@ export default function ContactsPage() {
                 ))}
                 {c.phone && <p className="text-xs text-muted">{c.phone}</p>}
                 {c.notes && <p className="text-xs text-muted/80 mt-1 whitespace-pre-wrap">{c.notes}</p>}
-                {!c.mine && c.owner_name && <p className="text-[11px] text-muted/70 mt-1">De {c.owner_name}</p>}
+                {c.shared && c.owner_name && (
+                  <p className="text-[11px] text-muted/70 mt-1">Compartido por {c.mine ? "ti" : c.owner_name}</p>
+                )}
                 {c.auto_added && <p className="text-[11px] text-muted/70 mt-1">Añadido automáticamente al enviar</p>}
               </div>
               {c.can_edit && (
-                <button className={`${btn} shrink-0`} onClick={() => setEditId(editId === c.id ? null : c.id)}>
-                  {editId === c.id ? "Cerrar" : "Editar"}
-                </button>
+                <div className="flex flex-col gap-2 shrink-0">
+                  {!c.shared && (
+                    <button
+                      className={btn}
+                      onClick={async () => {
+                        if (!window.confirm(`¿Compartir a ${c.name} con todos los usuarios?`)) return;
+                        await run((t) => setContactShared(t, c.id, true), "Contacto compartido: ya está en Comunes.").catch(() => {});
+                      }}
+                    >
+                      Compartir
+                    </button>
+                  )}
+                  <button className={btn} onClick={() => setEditId(editId === c.id ? null : c.id)}>
+                    {editId === c.id ? "Cerrar" : "Editar"}
+                  </button>
+                </div>
               )}
             </div>
             {editId === c.id && (
@@ -219,7 +259,19 @@ export default function ContactsPage() {
                     setEditId(null);
                   }}
                 />
-                <div className="pt-3 border-t border-line">
+                <div className="pt-3 border-t border-line flex flex-wrap gap-2">
+                  {c.shared && (
+                    <button
+                      className={btn}
+                      onClick={async () => {
+                        if (!window.confirm(`¿Dejar de compartir a ${c.name}? Pasará a Privados de su dueño.`)) return;
+                        await run((t) => setContactShared(t, c.id, false), "Contacto pasado a Privados.").catch(() => {});
+                        setEditId(null);
+                      }}
+                    >
+                      Dejar de compartir
+                    </button>
+                  )}
                   <button
                     className={`${btn} !text-red-400 !border-red-400/50`}
                     onClick={async () => {

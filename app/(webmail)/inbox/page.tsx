@@ -590,7 +590,7 @@ function RecipientInput({
         <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-60 overflow-y-auto bg-ink border border-line">
           {mine.length > 0 && (
             <>
-              <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted">Mis contactos</p>
+              <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted">Contactos</p>
               {mine.map((c) => (
                 <button
                   key={c.email}

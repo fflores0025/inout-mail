@@ -578,6 +578,7 @@ export interface Contact {
   phone: string | null;
   notes: string | null;
   auto_added: boolean;
+  shared: boolean;
   owner_name: string | null;
   mine: boolean;
   can_edit: boolean;
@@ -596,7 +597,7 @@ export function getContactList(token: string) {
   return request<{ contacts: Contact[] }>("/contacts", {}, token).then((r) => r.contacts);
 }
 
-export function createContact(token: string, data: ContactInput) {
+export function createContact(token: string, data: ContactInput & { shared?: boolean }) {
   return request<{ id: number }>("/contacts", { method: "POST", body: JSON.stringify(data) }, token);
 }
 
@@ -606,4 +607,12 @@ export function updateContact(token: string, id: number, data: ContactInput) {
 
 export function deleteContact(token: string, id: number) {
   return request<{ success: boolean }>(`/contacts/${id}`, { method: "DELETE" }, token);
+}
+
+export function setContactShared(token: string, id: number, shared: boolean) {
+  return request<{ success: boolean }>(
+    `/contacts/${id}/share`,
+    { method: "POST", body: JSON.stringify({ shared }) },
+    token
+  );
 }
