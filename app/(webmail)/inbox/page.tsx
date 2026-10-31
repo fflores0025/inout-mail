@@ -552,10 +552,12 @@ function RecipientInput({
   const match = (email: string, name?: string) =>
     !already.has(email) && (!last || email.includes(last) || (name || "").toLowerCase().includes(last));
 
-  const recent = contacts.recent.filter((e) => match(e)).slice(0, 8);
-  const recentSet = new Set(contacts.recent);
-  const directory = contacts.directory.filter((c) => !recentSet.has(c.email) && match(c.email, c.name));
-  const hasAny = recent.length > 0 || directory.length > 0;
+  const mine = (contacts.mine || []).filter((c) => match(c.email, `${c.name} ${c.company}`)).slice(0, 8);
+  const mineSet = new Set((contacts.mine || []).map((c) => c.email));
+  const recent = contacts.recent.filter((e) => !mineSet.has(e) && match(e)).slice(0, 8);
+  const usedSet = new Set([...mineSet, ...contacts.recent]);
+  const directory = contacts.directory.filter((c) => !usedSet.has(c.email) && match(c.email, c.name));
+  const hasAny = mine.length > 0 || recent.length > 0 || directory.length > 0;
 
   function pick(email: string) {
     onChange([...before, email].join(", "));
@@ -586,6 +588,26 @@ function RecipientInput({
       />
       {open && hasAny && (
         <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-60 overflow-y-auto bg-ink border border-line">
+          {mine.length > 0 && (
+            <>
+              <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted">Mis contactos</p>
+              {mine.map((c) => (
+                <button
+                  key={c.email}
+                  type="button"
+                  onMouseDown={(ev) => ev.preventDefault()}
+                  onClick={() => pick(c.email)}
+                  className={row}
+                >
+                  {c.name}
+                  {(c.company || c.job_title) && (
+                    <span className="text-xs text-muted"> · {[c.company, c.job_title].filter(Boolean).join(" · ")}</span>
+                  )}
+                  <span className="block text-xs text-muted break-all">{c.email}</span>
+                </button>
+              ))}
+            </>
+          )}
           {recent.length > 0 && (
             <>
               <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted">Enviados recientemente</p>

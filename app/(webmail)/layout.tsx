@@ -176,6 +176,13 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
           )}
         </nav>
 
+        <a
+          href="/contacts"
+          className="mx-4 mb-3 px-3 py-2 text-xs text-center text-muted border border-line hover:border-paper hover:text-paper transition-colors shrink-0"
+        >
+          Contactos
+        </a>
+
         {isAdmin && (
           <a
             href="/admin"

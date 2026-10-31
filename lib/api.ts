@@ -560,8 +560,50 @@ export function adminUpdateGroup(token: string, groupId: number, data: { name?: 
 export interface Contacts {
   recent: string[];
   directory: { name: string; email: string }[];
+  mine?: { name: string; company: string; job_title: string; email: string }[];
 }
 
 export function getContacts(token: string) {
   return request<Contacts>("/me/contacts", {}, token);
+}
+
+// --- Libreta de contactos ---
+
+export interface Contact {
+  id: number;
+  name: string;
+  company: string | null;
+  job_title: string | null;
+  emails: string[];
+  phone: string | null;
+  notes: string | null;
+  auto_added: boolean;
+  owner_name: string | null;
+  mine: boolean;
+  can_edit: boolean;
+}
+
+export type ContactInput = {
+  name: string;
+  company: string;
+  job_title: string;
+  emails: string;
+  phone: string;
+  notes: string;
+};
+
+export function getContactList(token: string) {
+  return request<{ contacts: Contact[] }>("/contacts", {}, token).then((r) => r.contacts);
+}
+
+export function createContact(token: string, data: ContactInput) {
+  return request<{ id: number }>("/contacts", { method: "POST", body: JSON.stringify(data) }, token);
+}
+
+export function updateContact(token: string, id: number, data: ContactInput) {
+  return request<{ success: boolean }>(`/contacts/${id}`, { method: "PATCH", body: JSON.stringify(data) }, token);
+}
+
+export function deleteContact(token: string, id: number) {
+  return request<{ success: boolean }>(`/contacts/${id}`, { method: "DELETE" }, token);
 }
