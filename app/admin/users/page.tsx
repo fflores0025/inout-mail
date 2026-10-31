@@ -271,11 +271,13 @@ export default function AdminUsersPage() {
                         placeholder="Nombre completo"
                         className={input}
                       />
-                      <input
+                      <textarea
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
-                        placeholder="Cargo (aparece en su firma)"
-                        className={input}
+                        rows={3}
+                        maxLength={600}
+                        placeholder={"Cargo y datos para su firma (varias líneas)\nEj. Extensión 101"}
+                        className={`${input} resize-none`}
                       />
                       <button
                         className={btn}

@@ -169,7 +169,10 @@ export default function AdminSignaturesPage() {
       </section>
 
       <section>
-        <h2 className="font-display text-xl text-paper mb-4">Cargo de cada usuario</h2>
+        <h2 className="font-display text-xl text-paper">Cargo y datos de cada usuario</h2>
+        <p className="text-xs text-muted mt-1 mb-4">
+          Puedes escribir varias líneas: cargo, extensión, teléfono directo… Salen debajo del nombre en su firma.
+        </p>
         {loading && <p className="text-sm text-muted">Cargando…</p>}
         <ul className="divide-y divide-line border-y border-line">
           {users.map((u) => {
@@ -180,21 +183,20 @@ export default function AdminSignaturesPage() {
                   <p className="text-sm text-paper">{u.full_name}</p>
                   <p className="text-xs text-muted break-all">{u.login_email}</p>
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    value={titles[u.id] || ""}
-                    onChange={(e) => setTitles((p) => ({ ...p, [u.id]: e.target.value }))}
-                    maxLength={120}
-                    placeholder="Cargo (ej. Director comercial)"
-                    className={input}
-                  />
-                  <button
-                    onClick={() => saveTitle(u)}
-                    className="px-4 py-2 text-sm border border-line text-paper hover:border-paper transition-colors shrink-0"
-                  >
-                    Guardar
-                  </button>
-                </div>
+                <textarea
+                  value={titles[u.id] || ""}
+                  onChange={(e) => setTitles((p) => ({ ...p, [u.id]: e.target.value }))}
+                  rows={3}
+                  maxLength={600}
+                  placeholder={"Cargo (ej. Director comercial)\nExtensión 101 · Tel. 936 942 696"}
+                  className={`${input} resize-none`}
+                />
+                <button
+                  onClick={() => saveTitle(u)}
+                  className="px-4 py-2 text-sm border border-line text-paper hover:border-paper transition-colors"
+                >
+                  Guardar
+                </button>
                 {text && (
                   <pre className="whitespace-pre-wrap text-xs text-muted/80 border-l border-line pl-3 font-body">
                     {text}
