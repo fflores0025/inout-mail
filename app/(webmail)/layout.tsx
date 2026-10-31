@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getMailboxes, getUnread, sortMailboxes, Mailbox, ApiError } from "@/lib/api";
+import { getMailboxes, getUnread, sortMailboxes, Mailbox, ApiError, FOLDERS } from "@/lib/api";
 import { getToken, clearToken, getUserFromToken } from "@/lib/session";
 import PushToggle, { pushLogoutCleanup } from "@/components/PushToggle";
 import { renewSessionIfNeeded } from "@/lib/refresh";
@@ -57,6 +57,7 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
   const [showOthers, setShowOthers] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [unread, setUnread] = useState<Record<string, number>>({});
+  const [currentFolder, setCurrentFolder] = useState("inbox");
 
   useEffect(() => {
     const token = getToken();
@@ -71,6 +72,7 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
 
     const cur = new URLSearchParams(window.location.search).get("mailbox");
     setCurrentId(cur);
+    setCurrentFolder(new URLSearchParams(window.location.search).get("folder") || "inbox");
 
     getMailboxes(token)
       .then((list) => {
@@ -165,6 +167,25 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
         </div>
 
         <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+          {current && (
+            <div className="pb-2 mb-2 border-b border-line">
+              <p className="px-3 pb-1 text-[11px] uppercase tracking-wide text-muted/70 truncate">{current.display_name}</p>
+              {FOLDERS.map((f) => (
+                <a
+                  key={f.key}
+                  href={`/inbox?mailbox=${current.id}${f.key === "inbox" ? "" : `&folder=${f.key}`}`}
+                  className={`flex items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-line/40 transition-colors ${
+                    currentFolder === f.key ? "text-paper" : "text-muted"
+                  }`}
+                >
+                  {f.label}
+                  {f.key === "inbox" && unread[String(current.id)] > 0 && (
+                    <span className="text-[11px] px-1.5 py-0.5 bg-paper text-ink rounded-sm">{unread[String(current.id)]}</span>
+                  )}
+                </a>
+              ))}
+            </div>
+          )}
           {mailboxes.slice(0, 1).map((mb) => (
             <a
               key={mb.id}

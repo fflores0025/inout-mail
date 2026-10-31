@@ -137,17 +137,43 @@ export function getMailboxes(token: string) {
   );
 }
 
-export function getMessages(mailboxId: string, token: string) {
+export type FolderKey = "inbox" | "sent" | "drafts" | "junk" | "trash";
+
+export const FOLDERS: { key: FolderKey; label: string }[] = [
+  { key: "inbox", label: "Bandeja de entrada" },
+  { key: "sent", label: "Enviados" },
+  { key: "drafts", label: "Borradores" },
+  { key: "junk", label: "Spam" },
+  { key: "trash", label: "Eliminados" },
+];
+
+export function moveMessage(mailboxId: string, uid: number, from: string, to: string, token: string) {
+  return request<{ success: boolean }>(
+    `/mailboxes/${mailboxId}/messages/${uid}/move`,
+    { method: "POST", body: JSON.stringify({ from, to }) },
+    token
+  );
+}
+
+export function deleteMessage(mailboxId: string, uid: number, folder: string, token: string) {
+  return request<{ success: boolean }>(
+    `/mailboxes/${mailboxId}/messages/${uid}/delete`,
+    { method: "POST", body: JSON.stringify({ folder }) },
+    token
+  );
+}
+
+export function getMessages(mailboxId: string, token: string, folder = "inbox") {
   return request<{ messages: Message[] }>(
-    `/mailboxes/${mailboxId}/messages`,
+    `/mailboxes/${mailboxId}/messages?folder=${folder}`,
     {},
     token
   ).then((res) => res.messages);
 }
 
-export function getMessage(mailboxId: string, uid: number, token: string) {
+export function getMessage(mailboxId: string, uid: number, token: string, folder = "inbox") {
   return request<{ message: FullMessage }>(
-    `/mailboxes/${mailboxId}/messages/${uid}`,
+    `/mailboxes/${mailboxId}/messages/${uid}?folder=${folder}`,
     {},
     token
   ).then((res) => res.message);

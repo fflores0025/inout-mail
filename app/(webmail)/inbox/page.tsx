@@ -7,6 +7,9 @@ import {
   sortMailboxes,
   getMessages,
   getMessage,
+  FOLDERS,
+  moveMessage,
+  deleteMessage,
   sendMessage,
   getMySignature,
   getSenders,
@@ -50,6 +53,8 @@ function InboxContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mailboxParam = searchParams.get("mailbox");
+  const folder = (searchParams.get("folder") || "inbox") as string;
+  const folderLabel = FOLDERS.find((f) => f.key === folder)?.label ?? "Bandeja de entrada";
 
   const [mailboxId, setMailboxId] = useState<string | null>(mailboxParam);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -82,20 +87,20 @@ function InboxContent() {
         setLoading(false);
         return;
       }
-      const msgs = await getMessages(targetId, token!);
+      const msgs = await getMessages(targetId, token!, folder);
       setMessages(sortByDateDesc(msgs));
       setLoading(false);
     }
 
     setLoading(true);
     load().catch(() => setLoading(false));
-  }, [mailboxParam, router]);
+  }, [mailboxParam, folder, router]);
 
   function reload() {
     if (!mailboxId) return;
     const token = getToken()!;
     setLoading(true);
-    getMessages(mailboxId, token)
+    getMessages(mailboxId, token, folder)
       .then((m) => setMessages(sortByDateDesc(m)))
       .finally(() => setLoading(false));
   }
@@ -107,13 +112,38 @@ function InboxContent() {
     setOpening(true);
     setOpenError(null);
     try {
-      const full = await getMessage(mailboxId, uid, token);
+      const full = await getMessage(mailboxId, uid, token, folder);
       setOpened(full);
       setMessages((prev) => prev.map((m) => (m.uid === uid ? { ...m, seen: true } : m)));
     } catch (err) {
       setOpenError(err instanceof ApiError ? err.message : "No se pudo abrir el mensaje");
     } finally {
       setOpening(false);
+    }
+  }
+
+  async function removeOpened(m: FullMessage) {
+    if (!mailboxId) return;
+    if (folder === "trash" && !window.confirm("¿Eliminar definitivamente este correo?")) return;
+    try {
+      await deleteMessage(mailboxId, m.uid, folder, getToken()!);
+      setOpened(null);
+      reload();
+    } catch (err) {
+      setOpenError(err instanceof ApiError ? err.message : "No se pudo eliminar");
+      setOpened(null);
+    }
+  }
+
+  async function moveOpened(m: FullMessage, to: string) {
+    if (!mailboxId) return;
+    try {
+      await moveMessage(mailboxId, m.uid, folder, to, getToken()!);
+      setOpened(null);
+      reload();
+    } catch (err) {
+      setOpenError(err instanceof ApiError ? err.message : "No se pudo mover");
+      setOpened(null);
     }
   }
 
@@ -163,12 +193,36 @@ function InboxContent() {
           <button onClick={() => setOpened(null)} className="text-sm text-muted hover:text-paper">
             ← Volver
           </button>
-          <button
-            onClick={() => startReply(opened)}
-            className="px-4 py-2 text-sm border border-paper text-paper hover:bg-paper hover:text-ink transition-colors shrink-0"
-          >
-            Responder
-          </button>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {(folder === "trash" || folder === "junk") && (
+              <button
+                onClick={() => moveOpened(opened, "inbox")}
+                className="px-3 py-2 text-sm border border-line text-muted hover:border-paper hover:text-paper transition-colors shrink-0"
+              >
+                Recuperar
+              </button>
+            )}
+            {folder === "inbox" && (
+              <button
+                onClick={() => moveOpened(opened, "junk")}
+                className="px-3 py-2 text-sm border border-line text-muted hover:border-paper hover:text-paper transition-colors shrink-0"
+              >
+                Spam
+              </button>
+            )}
+            <button
+              onClick={() => removeOpened(opened)}
+              className="px-3 py-2 text-sm border border-line text-muted hover:border-red-400 hover:text-red-400 transition-colors shrink-0"
+            >
+              {folder === "trash" ? "Eliminar definitivamente" : "Eliminar"}
+            </button>
+            <button
+              onClick={() => startReply(opened)}
+              className="px-4 py-2 text-sm border border-paper text-paper hover:bg-paper hover:text-ink transition-colors shrink-0"
+            >
+              Responder
+            </button>
+          </div>
         </div>
 
         <div className="px-6 sm:px-8 py-5 border-b border-line space-y-1">
@@ -225,7 +279,7 @@ function InboxContent() {
   return (
     <main className="h-full overflow-y-auto relative">
       <div className="px-6 sm:px-8 py-6 border-b border-line flex items-center justify-between">
-        <h1 className="font-display text-2xl text-paper">Bandeja de entrada</h1>
+        <h1 className="font-display text-2xl text-paper">{folderLabel}</h1>
         <div className="flex items-center gap-4 shrink-0">
           {mailboxId && (
             <button
@@ -243,7 +297,7 @@ function InboxContent() {
       {opening && <p className="px-6 sm:px-8 py-3 text-sm text-muted">Abriendo…</p>}
 
       {!loading && messages.length === 0 && (
-        <p className="px-6 sm:px-8 py-6 text-sm text-muted">No hay mensajes en este buzón.</p>
+        <p className="px-6 sm:px-8 py-6 text-sm text-muted">No hay mensajes en esta carpeta.</p>
       )}
 
       <ul className="divide-y divide-line">
@@ -255,7 +309,7 @@ function InboxContent() {
           >
             <div className="flex items-baseline justify-between gap-4">
               <span className={`text-sm truncate ${msg.seen ? "text-muted" : "text-paper font-medium"}`}>
-                {msg.from}
+                {folder === "sent" || folder === "drafts" ? `Para: ${msg.to}` : msg.from}
               </span>
               <span className="text-xs text-muted shrink-0">{formatDate(msg.date)}</span>
             </div>
