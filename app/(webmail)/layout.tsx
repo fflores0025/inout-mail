@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getMailboxes, Mailbox, ApiError } from "@/lib/api";
+import { getMailboxes, sortMailboxes, Mailbox, ApiError } from "@/lib/api";
 import { getToken, clearToken, getUserFromToken } from "@/lib/session";
 import PushToggle, { pushLogoutCleanup } from "@/components/PushToggle";
 import { renewSessionIfNeeded } from "@/lib/refresh";
@@ -12,6 +12,8 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
   const [mailboxes, setMailboxes] = useState<Mailbox[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showOthers, setShowOthers] = useState(false);
+  const [currentId, setCurrentId] = useState<string | null>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -24,8 +26,16 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
 
     renewSessionIfNeeded(token);
 
+    const cur = new URLSearchParams(window.location.search).get("mailbox");
+    setCurrentId(cur);
+
     getMailboxes(token)
-      .then(setMailboxes)
+      .then((list) => {
+        const sorted = sortMailboxes(list, user?.email);
+        setMailboxes(sorted);
+        // Si ya estas viendo uno de los otros buzones, se deja desplegada la lista
+        if (cur && sorted.length > 0 && String(sorted[0].id) !== cur) setShowOthers(true);
+      })
       .catch((err) => {
         // Solo se cierra la sesion si el servidor dice que ya no vale
         if (err instanceof ApiError && err.status === 401) {
@@ -82,16 +92,40 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
         </div>
 
         <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-          {mailboxes.map((mb) => (
+          {mailboxes.slice(0, 1).map((mb) => (
             <a
               key={mb.id}
               href={`/inbox?mailbox=${mb.id}`}
-              className="block px-3 py-2 text-sm text-muted hover:text-paper hover:bg-line/40 transition-colors"
+              className="block px-3 py-2 text-sm text-paper hover:bg-line/40 transition-colors"
             >
               {mb.display_name}
               <span className="block text-xs text-muted/70">{mb.email}</span>
             </a>
           ))}
+          {mailboxes.length > 1 && (
+            <>
+              <button
+                onClick={() => setShowOthers((v) => !v)}
+                className="w-full flex items-center justify-between px-3 py-2 text-xs uppercase tracking-wide text-muted hover:text-paper"
+              >
+                <span>Otros buzones ({mailboxes.length - 1})</span>
+                <span>{showOthers ? "−" : "+"}</span>
+              </button>
+              {showOthers &&
+                mailboxes.slice(1).map((mb) => (
+                  <a
+                    key={mb.id}
+                    href={`/inbox?mailbox=${mb.id}`}
+                    className={`block px-3 py-2 text-sm hover:text-paper hover:bg-line/40 transition-colors ${
+                      currentId === String(mb.id) ? "text-paper" : "text-muted"
+                    }`}
+                  >
+                    {mb.display_name}
+                    <span className="block text-xs text-muted/70">{mb.email}</span>
+                  </a>
+                ))}
+            </>
+          )}
           {mailboxes.length === 0 && (
             <p className="px-3 py-2 text-xs text-muted">Sin buzones asignados</p>
           )}

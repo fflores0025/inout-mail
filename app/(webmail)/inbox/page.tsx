@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   getMailboxes,
+  sortMailboxes,
   getMessages,
   getMessage,
   sendMessage,
@@ -12,7 +13,7 @@ import {
   FullMessage,
   ApiError,
 } from "@/lib/api";
-import { getToken } from "@/lib/session";
+import { getToken, getUserFromToken } from "@/lib/session";
 
 function formatDate(d: string | null | undefined) {
   if (!d) return "";
@@ -66,7 +67,7 @@ function InboxContent() {
       setOpened(null);
       let targetId = mailboxParam;
       if (!targetId) {
-        const mailboxes = await getMailboxes(token!);
+        const mailboxes = sortMailboxes(await getMailboxes(token!), getUserFromToken()?.email);
         targetId = mailboxes[0]?.id != null ? String(mailboxes[0].id) : null;
         setMailboxId(targetId);
       } else {

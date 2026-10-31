@@ -7,6 +7,13 @@ export interface Mailbox {
   kind: "personal" | "department";
 }
 
+// Primero el buzon propio (el de la cuenta con la que se inicio sesion), despues el resto
+export function sortMailboxes(list: Mailbox[], loginEmail?: string | null): Mailbox[] {
+  const mine = (m: Mailbox) => (loginEmail ? m.email.toLowerCase() === loginEmail.toLowerCase() : false);
+  const rank = (m: Mailbox) => (mine(m) ? 0 : m.kind === "personal" ? 1 : 2);
+  return [...list].sort((a, b) => rank(a) - rank(b));
+}
+
 export interface Message {
   uid: number;
   from: string;
