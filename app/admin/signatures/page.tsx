@@ -134,8 +134,7 @@ export default function AdminSignaturesPage() {
       <form onSubmit={saveFooter} className="space-y-3 max-w-md">
         <h2 className="font-display text-xl text-paper">Pie común de la firma</h2>
         <p className="text-xs text-muted">
-          Se añade debajo del nombre y el cargo en todas las firmas (por ejemplo: empresa, teléfono, web).
-          La firma es opcional: cada persona puede quitarla al redactar un correo.
+          Sale siempre al final de todos los correos que se envían (por ejemplo: empresa, teléfono, web).
         </p>
         <textarea
           value={footer}
@@ -158,8 +157,9 @@ export default function AdminSignaturesPage() {
         <div>
           <h2 className="font-display text-xl text-paper">Firma de cada buzón</h2>
           <p className="text-xs text-muted mt-1">
-            Aquí salen los buzones departamentales y los que no tienen un titular. Al enviar desde uno de ellos, esta firma sale primero y debajo la firma personal de
-            quien envía. Déjala vacía si ese buzón no lleva firma propia.
+            Aquí salen los buzones departamentales y los que no tienen un titular. Esta firma sale siempre al
+            enviar desde el buzón. Antes de enviar, quien escribe elige si añade también su firma personal.
+            Déjala vacía si ese buzón no lleva firma propia.
           </p>
         </div>
         {boxes.length === 0 && !loading && <p className="text-sm text-muted">No hay buzones.</p>}
@@ -184,7 +184,7 @@ export default function AdminSignaturesPage() {
                   checked={!!boxOnly[m.id]}
                   onChange={(e) => setBoxOnly((p) => ({ ...p, [m.id]: e.target.checked }))}
                 />
-                Solo esta firma (sin la firma personal de quien envía)
+                Nunca añadir firma personal en este buzón (no pregunta al enviar)
               </label>
               <button
                 onClick={() => saveBoxSig(m)}

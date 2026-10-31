@@ -161,7 +161,7 @@ export function sendMessage(
     subject: string;
     text: string;
     attachments?: { filename: string; content_type: string; data: string }[];
-    include_signature?: boolean;
+    personal_signature?: "include" | "omit";
     from_group_id?: number;
   }
 ) {
@@ -498,9 +498,15 @@ export function adminSetGroupSignature(token: string, groupId: number, signature
   );
 }
 
+export interface MySignature {
+  signature: string; // firma que sale siempre (buzon/grupo + pie)
+  personal: string; // firma personal opcional (vacia si no hay que preguntar)
+  choice: boolean;
+}
+
 export function getMySignature(token: string, mailboxId?: string | number, groupId?: number | null) {
   const qs = groupId ? `?mailbox=${mailboxId}&group=${groupId}` : mailboxId ? `?mailbox=${mailboxId}` : "";
-  return request<{ signature: string }>(`/me/signature${qs}`, {}, token).then((res) => res.signature);
+  return request<MySignature>(`/me/signature${qs}`, {}, token);
 }
 
 export function adminGetSignatures(token: string) {

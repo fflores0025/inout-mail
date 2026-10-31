@@ -296,7 +296,9 @@ function ComposeModal({
   const [body, setBody] = useState(initial.body);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [signature, setSignature] = useState("");
-  const [useSignature, setUseSignature] = useState(true);
+  const [personal, setPersonal] = useState("");
+  const [choice, setChoice] = useState(false);
+  const [askPersonal, setAskPersonal] = useState(false);
   const [senders, setSenders] = useState<Sender[]>([]);
   const [fromGroup, setFromGroup] = useState("");
   const [sending, setSending] = useState(false);
@@ -306,8 +308,16 @@ function ComposeModal({
     const token = getToken();
     if (!token) return;
     getMySignature(token, mailboxId, fromGroup ? Number(fromGroup) : null)
-      .then(setSignature)
-      .catch(() => setSignature(""));
+      .then((r) => {
+        setSignature(r.signature);
+        setPersonal(r.personal);
+        setChoice(r.choice);
+      })
+      .catch(() => {
+        setSignature("");
+        setPersonal("");
+        setChoice(false);
+      });
   }, [mailboxId, fromGroup]);
 
   useEffect(() => {
@@ -352,8 +362,17 @@ function ComposeModal({
     if (added.length > 0) setAttachments((prev) => [...prev, ...added]);
   }
 
-  async function handleSend(e: React.FormEvent) {
+  function handleSend(e: React.FormEvent) {
     e.preventDefault();
+    if (choice) {
+      setAskPersonal(true);
+      return;
+    }
+    doSend("omit");
+  }
+
+  async function doSend(mode: "include" | "omit") {
+    setAskPersonal(false);
     setSending(true);
     setError(null);
     try {
@@ -363,7 +382,7 @@ function ComposeModal({
         subject,
         text: body,
         attachments: attachments.map(({ filename, content_type, data }) => ({ filename, content_type, data })),
-        include_signature: useSignature,
+        personal_signature: mode,
         from_group_id: fromGroup ? Number(fromGroup) : undefined,
       });
       onSent();
@@ -426,20 +445,11 @@ function ComposeModal({
           />
 
           {signature && (
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-xs text-muted cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={useSignature}
-                  onChange={(e) => setUseSignature(e.target.checked)}
-                />
-                Incluir mi firma
-              </label>
-              {useSignature && (
-                <pre className="whitespace-pre-wrap text-xs text-muted/80 border-l border-line pl-3 font-body">
-                  {signature}
-                </pre>
-              )}
+            <div className="space-y-1">
+              <p className="text-xs text-muted">Firma y pie que saldrán siempre en este correo:</p>
+              <pre className="whitespace-pre-wrap text-xs text-muted/80 border-l border-line pl-3 font-body">
+                {signature}
+              </pre>
             </div>
           )}
 
@@ -482,6 +492,43 @@ function ComposeModal({
             </p>
           )}
         </form>
+
+        {askPersonal && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4">
+            <div className="bg-ink border border-line w-full max-w-md p-5 space-y-4">
+              <h3 className="font-display text-lg text-paper">¿Aceptas que se envíe este correo con tu firma personal?</h3>
+              <pre className="whitespace-pre-wrap text-xs text-muted/80 border-l border-line pl-3 font-body">
+                {personal}
+              </pre>
+              <p className="text-xs text-muted">
+                La firma del buzón y el pie de página salen siempre. Elige si además va tu firma personal.
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => doSend("include")}
+                  className="px-4 py-2 text-sm border border-paper text-paper hover:bg-paper hover:text-ink transition-colors"
+                >
+                  Enviar con mi firma personal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => doSend("omit")}
+                  className="px-4 py-2 text-sm border border-amber-400 text-amber-400 hover:bg-amber-400/10 transition-colors"
+                >
+                  Solo firma del buzón
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAskPersonal(false)}
+                  className="px-4 py-2 text-sm border border-line text-muted hover:text-paper hover:border-paper transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
