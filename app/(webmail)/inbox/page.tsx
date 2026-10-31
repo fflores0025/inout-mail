@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   getMailboxes,
@@ -57,6 +57,7 @@ function InboxContent() {
   const [compose, setCompose] = useState<ComposeInit | null>(null);
 
   const [opened, setOpened] = useState<FullMessage | null>(null);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const [opening, setOpening] = useState(false);
   const [openError, setOpenError] = useState<string | null>(null);
 
@@ -131,6 +132,23 @@ function InboxContent() {
     });
   }
 
+  // Deslizar de lado para salir del correo abierto
+  const swipeHandlers = {
+    onTouchStart: (e: React.TouchEvent) => {
+      const t = e.touches[0];
+      swipeStart.current = { x: t.clientX, y: t.clientY };
+    },
+    onTouchEnd: (e: React.TouchEvent) => {
+      const s0 = swipeStart.current;
+      swipeStart.current = null;
+      if (!s0 || compose) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - s0.x;
+      const dy = t.clientY - s0.y;
+      if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2) setOpened(null);
+    },
+  };
+
   // ---------- Vista de mensaje abierto ----------
   if (opened) {
     const srcDoc = opened.html
@@ -138,7 +156,9 @@ function InboxContent() {
       : null;
 
     return (
-      <main className="h-full overflow-y-auto relative">
+      <main className="h-full overflow-y-auto relative" {...swipeHandlers}>
+        {/* Franja del borde izquierdo: permite deslizar tambien sobre correos con imagenes/HTML */}
+        <div className="md:hidden fixed left-0 top-14 bottom-0 w-6 z-20" {...swipeHandlers} />
         <div className="px-6 sm:px-8 py-4 border-b border-line flex items-center justify-between gap-3">
           <button onClick={() => setOpened(null)} className="text-sm text-muted hover:text-paper">
             ← Volver
