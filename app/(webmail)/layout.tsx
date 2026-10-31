@@ -1,11 +1,53 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getMailboxes, sortMailboxes, Mailbox, ApiError } from "@/lib/api";
 import { getToken, clearToken, getUserFromToken } from "@/lib/session";
 import PushToggle, { pushLogoutCleanup } from "@/components/PushToggle";
 import { renewSessionIfNeeded } from "@/lib/refresh";
+
+// Version corta del nombre de un buzon: DPO, SPO, F Flores...
+function shortName(m: Mailbox): string {
+  const full = m.display_name.trim();
+  if (m.kind === "department") {
+    const local = m.email.split("@")[0].toUpperCase();
+    return local.length < full.length ? local : full;
+  }
+  const parts = full.split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0].toUpperCase()} ${parts[1]}`;
+  return full;
+}
+
+function TopLabel({ mailbox }: { mailbox: Mailbox }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [short, setShort] = useState(false);
+  const full = mailbox.display_name;
+
+  useLayoutEffect(() => {
+    function check() {
+      const el = ref.current;
+      if (!el) return;
+      setShort(false);
+      requestAnimationFrame(() => {
+        if (ref.current && ref.current.scrollWidth > ref.current.clientWidth + 1) setShort(true);
+      });
+    }
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [full]);
+
+  return (
+    <span
+      ref={ref}
+      title={full}
+      className="ml-2 pl-2 border-l border-line text-sm text-muted truncate min-w-0"
+    >
+      {short ? shortName(mailbox) : full}
+    </span>
+  );
+}
 
 export default function WebmailLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -66,11 +108,7 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
           </svg>
         </button>
         <span className="font-display text-lg text-paper ml-4 tracking-wide shrink-0">InOut Mail</span>
-        {current && (
-          <span className="ml-2 pl-2 border-l border-line text-sm text-muted truncate min-w-0">
-            {current.display_name}
-          </span>
-        )}
+        {current && <TopLabel mailbox={current} />}
       </div>
 
       {sidebarOpen && (
