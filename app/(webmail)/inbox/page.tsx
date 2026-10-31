@@ -301,10 +301,10 @@ function ComposeModal({
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    getMySignature(token)
+    getMySignature(token, mailboxId)
       .then(setSignature)
       .catch(() => setSignature(""));
-  }, []);
+  }, [mailboxId]);
 
   const totalBytes = attachments.reduce((sum, a) => sum + a.size, 0);
 

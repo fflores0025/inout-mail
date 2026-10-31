@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ApiError,
+  MailboxSignature,
   SignatureUser,
+  adminSetMailboxSignature,
   adminGetSignatures,
   adminSetJobTitle,
   adminSetSignatureFooter,
@@ -17,13 +19,15 @@ function preview(name: string, title: string, footer: string) {
   const t = title.trim();
   const f = footer.trim();
   if (!t && !f) return "";
-  return ["-- ", name, ...(t ? [t] : []), ...(f ? [f] : [])].join("\n");
+  return [name, ...(t ? [t] : []), ...(f ? [f] : [])].join("\n");
 }
 
 export default function AdminSignaturesPage() {
   const [users, setUsers] = useState<SignatureUser[]>([]);
   const [titles, setTitles] = useState<Record<number, string>>({});
   const [footer, setFooter] = useState("");
+  const [boxes, setBoxes] = useState<MailboxSignature[]>([]);
+  const [boxSigs, setBoxSigs] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -44,6 +48,9 @@ export default function AdminSignaturesPage() {
         t[u.id] = u.job_title || "";
       });
       setTitles(t);
+      const list = data.mailboxes || [];
+      setBoxes(list);
+      setBoxSigs(Object.fromEntries(list.map((m) => [m.id, m.signature || ""])));
     } catch (err) {
       setError(errMsg(err));
     } finally {
@@ -85,6 +92,19 @@ export default function AdminSignaturesPage() {
     }
   }
 
+  async function saveBoxSig(m: MailboxSignature) {
+    const token = getToken();
+    if (!token) return;
+    setError(null);
+    setNotice(null);
+    try {
+      await adminSetMailboxSignature(token, m.id, boxSigs[m.id] || "");
+      setNotice(`Firma de ${m.display_name} guardada.`);
+    } catch (err) {
+      setError(errMsg(err));
+    }
+  }
+
   return (
     <div className="space-y-10">
       {error && <p className="text-sm text-red-400 border border-red-400/40 px-3 py-2">{error}</p>}
@@ -112,6 +132,41 @@ export default function AdminSignaturesPage() {
           {savingFooter ? "Guardando…" : "Guardar pie"}
         </button>
       </form>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="font-display text-xl text-paper">Firma de cada buzón departamental</h2>
+          <p className="text-xs text-muted mt-1">
+            Al enviar desde un buzón departamental, esta firma sale primero y debajo la firma personal de
+            quien envía. Déjala vacía si ese buzón no lleva firma propia.
+          </p>
+        </div>
+        {boxes.length === 0 && !loading && <p className="text-sm text-muted">No hay buzones departamentales.</p>}
+        <ul className="divide-y divide-line border-y border-line">
+          {boxes.map((m) => (
+            <li key={m.id} className="py-4 space-y-2">
+              <div>
+                <p className="text-sm text-paper">{m.display_name}</p>
+                <p className="text-xs text-muted break-all">{m.email}</p>
+              </div>
+              <textarea
+                value={boxSigs[m.id] || ""}
+                onChange={(e) => setBoxSigs((p) => ({ ...p, [m.id]: e.target.value }))}
+                rows={2}
+                maxLength={1000}
+                placeholder="Ej. Departamento Comercial de InOut Media"
+                className={`${input} resize-none`}
+              />
+              <button
+                onClick={() => saveBoxSig(m)}
+                className="px-4 py-2 text-sm border border-line text-paper hover:border-paper transition-colors"
+              >
+                Guardar firma
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <section>
         <h2 className="font-display text-xl text-paper mb-4">Cargo de cada usuario</h2>

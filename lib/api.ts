@@ -456,6 +456,21 @@ export function adminRemoveGroupMember(token: string, groupId: number, aliasId: 
 }
 
 // ---------- Firmas ----------
+export interface MailboxSignature {
+  id: number;
+  display_name: string;
+  email: string;
+  signature: string;
+}
+
+export function adminSetMailboxSignature(token: string, mailboxId: number, signature: string) {
+  return request<{ success: boolean }>(
+    `/admin/mailboxes/${mailboxId}/signature`,
+    { method: "PATCH", body: JSON.stringify({ signature }) },
+    token
+  );
+}
+
 export interface SignatureUser {
   id: number;
   full_name: string;
@@ -463,12 +478,13 @@ export interface SignatureUser {
   job_title: string | null;
 }
 
-export function getMySignature(token: string) {
-  return request<{ signature: string }>("/me/signature", {}, token).then((res) => res.signature);
+export function getMySignature(token: string, mailboxId?: string | number) {
+  const qs = mailboxId ? `?mailbox=${mailboxId}` : "";
+  return request<{ signature: string }>(`/me/signature${qs}`, {}, token).then((res) => res.signature);
 }
 
 export function adminGetSignatures(token: string) {
-  return request<{ footer: string; users: SignatureUser[] }>("/admin/signatures", {}, token);
+  return request<{ footer: string; users: SignatureUser[]; mailboxes?: MailboxSignature[] }>("/admin/signatures", {}, token);
 }
 
 export function adminSetSignatureFooter(token: string, footer: string) {
