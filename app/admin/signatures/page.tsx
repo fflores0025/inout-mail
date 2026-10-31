@@ -16,11 +16,10 @@ import { getToken } from "@/lib/session";
 const input =
   "w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper";
 
-function preview(name: string, title: string, footer: string) {
+function preview(name: string, title: string) {
   const t = title.trim();
-  const f = footer.trim();
-  if (!t && !f) return "";
-  return [name, ...(t ? [t] : []), ...(f ? [f] : [])].join("\n");
+  if (!t) return "";
+  return [name, t].join("\n");
 }
 
 export default function AdminSignaturesPage() {
@@ -240,7 +239,7 @@ export default function AdminSignaturesPage() {
         {loading && <p className="text-sm text-muted">Cargando…</p>}
         <ul className="divide-y divide-line border-y border-line">
           {users.map((u) => {
-            const text = preview(u.full_name, titles[u.id] || "", footer);
+            const text = preview(u.full_name, titles[u.id] || "");
             return (
               <li key={u.id} className="py-4 space-y-2">
                 <div>
