@@ -7,6 +7,7 @@ import {
   getMessages,
   getMessage,
   sendMessage,
+  getMySignature,
   Message,
   FullMessage,
   ApiError,
@@ -255,6 +256,27 @@ function InboxContent() {
   );
 }
 
+const MAX_ATTACH_BYTES = 15 * 1024 * 1024;
+
+type Attachment = { filename: string; content_type: string; data: string; size: number };
+
+function readAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      resolve(result.slice(result.indexOf(",") + 1));
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function ComposeModal({
   mailboxId,
   initial,
@@ -269,8 +291,53 @@ function ComposeModal({
   const [to, setTo] = useState(initial.to);
   const [subject, setSubject] = useState(initial.subject);
   const [body, setBody] = useState(initial.body);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [signature, setSignature] = useState("");
+  const [useSignature, setUseSignature] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    getMySignature(token)
+      .then(setSignature)
+      .catch(() => setSignature(""));
+  }, []);
+
+  const totalBytes = attachments.reduce((sum, a) => sum + a.size, 0);
+
+  async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    setError(null);
+    let running = totalBytes;
+    const added: Attachment[] = [];
+    for (const file of files) {
+      if (attachments.length + added.length >= 10) {
+        setError("Máximo 10 adjuntos por correo");
+        break;
+      }
+      if (running + file.size > MAX_ATTACH_BYTES) {
+        setError(`Los adjuntos no pueden superar los ${formatSize(MAX_ATTACH_BYTES)} en total`);
+        break;
+      }
+      try {
+        const data = await readAsBase64(file);
+        added.push({
+          filename: file.name,
+          content_type: file.type || "application/octet-stream",
+          data,
+          size: file.size,
+        });
+        running += file.size;
+      } catch {
+        setError(`No se pudo leer ${file.name}`);
+      }
+    }
+    if (added.length > 0) setAttachments((prev) => [...prev, ...added]);
+  }
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -278,7 +345,13 @@ function ComposeModal({
     setError(null);
     try {
       const token = getToken()!;
-      await sendMessage(mailboxId, token, { to, subject, text: body });
+      await sendMessage(mailboxId, token, {
+        to,
+        subject,
+        text: body,
+        attachments: attachments.map(({ filename, content_type, data }) => ({ filename, content_type, data })),
+        include_signature: useSignature,
+      });
       onSent();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo enviar el mensaje");
@@ -320,16 +393,66 @@ function ComposeModal({
             onChange={(e) => setBody(e.target.value)}
             placeholder="Escribe tu mensaje…"
             rows={10}
-            required
+            required={attachments.length === 0}
             className="w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper resize-none"
           />
-          <button
-            type="submit"
-            disabled={sending}
-            className="px-4 py-2 text-sm border border-paper text-paper hover:bg-paper hover:text-ink transition-colors disabled:opacity-50"
-          >
-            {sending ? "Enviando…" : "Enviar"}
-          </button>
+
+          {signature && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-xs text-muted cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={useSignature}
+                  onChange={(e) => setUseSignature(e.target.checked)}
+                />
+                Incluir mi firma
+              </label>
+              {useSignature && (
+                <pre className="whitespace-pre-wrap text-xs text-muted/80 border-l border-line pl-3 font-body">
+                  {signature}
+                </pre>
+              )}
+            </div>
+          )}
+
+          {attachments.length > 0 && (
+            <ul className="divide-y divide-line border-y border-line">
+              {attachments.map((a, i) => (
+                <li key={`${a.filename}-${i}`} className="py-2 flex items-center justify-between gap-3">
+                  <span className="text-xs text-paper truncate">
+                    {a.filename} <span className="text-muted">({formatSize(a.size)})</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAttachments((prev) => prev.filter((_, j) => j !== i))}
+                    className="text-xs text-muted hover:text-paper shrink-0"
+                  >
+                    Quitar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="submit"
+              disabled={sending}
+              className="px-4 py-2 text-sm border border-paper text-paper hover:bg-paper hover:text-ink transition-colors disabled:opacity-50"
+            >
+              {sending ? "Enviando…" : "Enviar"}
+            </button>
+            <label className="px-4 py-2 text-sm border border-line text-paper hover:border-paper transition-colors cursor-pointer">
+              Adjuntar archivo
+              <input type="file" multiple onChange={handleFiles} className="hidden" />
+            </label>
+          </div>
+          {attachments.length > 0 && (
+            <p className="text-xs text-muted">
+              {attachments.length} adjunto{attachments.length === 1 ? "" : "s"} · {formatSize(totalBytes)} de{" "}
+              {formatSize(MAX_ATTACH_BYTES)}
+            </p>
+          )}
         </form>
       </div>
     </div>

@@ -149,7 +149,13 @@ export function getMessage(mailboxId: string, uid: number, token: string) {
 export function sendMessage(
   mailboxId: string,
   token: string,
-  payload: { to: string; subject: string; text: string }
+  payload: {
+    to: string;
+    subject: string;
+    text: string;
+    attachments?: { filename: string; content_type: string; data: string }[];
+    include_signature?: boolean;
+  }
 ) {
   return request<{ sent: boolean }>(
     `/mailboxes/${mailboxId}/send`,
@@ -440,4 +446,36 @@ export function adminRemoveGroupMember(token: string, groupId: number, aliasId: 
     { method: "DELETE" },
     token
   ).then((res) => res.members);
+}
+
+// ---------- Firmas ----------
+export interface SignatureUser {
+  id: number;
+  full_name: string;
+  login_email: string;
+  job_title: string | null;
+}
+
+export function getMySignature(token: string) {
+  return request<{ signature: string }>("/me/signature", {}, token).then((res) => res.signature);
+}
+
+export function adminGetSignatures(token: string) {
+  return request<{ footer: string; users: SignatureUser[] }>("/admin/signatures", {}, token);
+}
+
+export function adminSetSignatureFooter(token: string, footer: string) {
+  return request<{ success: boolean }>(
+    "/admin/signatures/footer",
+    { method: "POST", body: JSON.stringify({ footer }) },
+    token
+  );
+}
+
+export function adminSetJobTitle(token: string, userId: number, jobTitle: string) {
+  return request<{ user: SignatureUser }>(
+    `/admin/users/${userId}/job-title`,
+    { method: "PATCH", body: JSON.stringify({ job_title: jobTitle }) },
+    token
+  );
 }
