@@ -162,6 +162,7 @@ export function sendMessage(
     text: string;
     attachments?: { filename: string; content_type: string; data: string }[];
     include_signature?: boolean;
+    from_group_id?: number;
   }
 ) {
   return request<{ sent: boolean }>(
@@ -478,13 +479,31 @@ export interface SignatureUser {
   job_title: string | null;
 }
 
-export function getMySignature(token: string, mailboxId?: string | number) {
-  const qs = mailboxId ? `?mailbox=${mailboxId}` : "";
+export interface Sender {
+  id: number;
+  name: string;
+  address: string;
+}
+
+export function getSenders(token: string) {
+  return request<{ groups: Sender[] }>("/me/senders", {}, token).then((res) => res.groups);
+}
+
+export function adminSetGroupSignature(token: string, groupId: number, signature: string) {
+  return request<{ success: boolean }>(
+    `/admin/groups/${groupId}/signature`,
+    { method: "PATCH", body: JSON.stringify({ signature }) },
+    token
+  );
+}
+
+export function getMySignature(token: string, mailboxId?: string | number, groupId?: number | null) {
+  const qs = groupId ? `?mailbox=${mailboxId}&group=${groupId}` : mailboxId ? `?mailbox=${mailboxId}` : "";
   return request<{ signature: string }>(`/me/signature${qs}`, {}, token).then((res) => res.signature);
 }
 
 export function adminGetSignatures(token: string) {
-  return request<{ footer: string; users: SignatureUser[]; mailboxes?: MailboxSignature[] }>("/admin/signatures", {}, token);
+  return request<{ footer: string; users: SignatureUser[]; mailboxes?: MailboxSignature[]; groups?: { id: number; name: string; address: string; signature: string }[] }>("/admin/signatures", {}, token);
 }
 
 export function adminSetSignatureFooter(token: string, footer: string) {

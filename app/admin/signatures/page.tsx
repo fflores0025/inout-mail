@@ -5,6 +5,7 @@ import {
   ApiError,
   MailboxSignature,
   SignatureUser,
+  adminSetGroupSignature,
   adminSetMailboxSignature,
   adminGetSignatures,
   adminSetJobTitle,
@@ -28,6 +29,8 @@ export default function AdminSignaturesPage() {
   const [footer, setFooter] = useState("");
   const [boxes, setBoxes] = useState<MailboxSignature[]>([]);
   const [boxSigs, setBoxSigs] = useState<Record<number, string>>({});
+  const [groups, setGroups] = useState<{ id: number; name: string; address: string; signature: string }[]>([]);
+  const [groupSigs, setGroupSigs] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -50,6 +53,9 @@ export default function AdminSignaturesPage() {
       setTitles(t);
       const list = data.mailboxes || [];
       setBoxes(list);
+      const gl = data.groups || [];
+      setGroups(gl);
+      setGroupSigs(Object.fromEntries(gl.map((g) => [g.id, g.signature || ""])));
       setBoxSigs(Object.fromEntries(list.map((m) => [m.id, m.signature || ""])));
     } catch (err) {
       setError(errMsg(err));
@@ -105,6 +111,19 @@ export default function AdminSignaturesPage() {
     }
   }
 
+  async function saveGroupSig(g: { id: number; name: string }) {
+    const token = getToken();
+    if (!token) return;
+    setError(null);
+    setNotice(null);
+    try {
+      await adminSetGroupSignature(token, g.id, groupSigs[g.id] || "");
+      setNotice(`Firma del grupo ${g.name} guardada.`);
+    } catch (err) {
+      setError(errMsg(err));
+    }
+  }
+
   return (
     <div className="space-y-10">
       {error && <p className="text-sm text-red-400 border border-red-400/40 px-3 py-2">{error}</p>}
@@ -135,13 +154,13 @@ export default function AdminSignaturesPage() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="font-display text-xl text-paper">Firma de cada buzón departamental</h2>
+          <h2 className="font-display text-xl text-paper">Firma de cada buzón</h2>
           <p className="text-xs text-muted mt-1">
-            Al enviar desde un buzón departamental, esta firma sale primero y debajo la firma personal de
+            Aquí salen los buzones departamentales y los que no tienen un titular. Al enviar desde uno de ellos, esta firma sale primero y debajo la firma personal de
             quien envía. Déjala vacía si ese buzón no lleva firma propia.
           </p>
         </div>
-        {boxes.length === 0 && !loading && <p className="text-sm text-muted">No hay buzones departamentales.</p>}
+        {boxes.length === 0 && !loading && <p className="text-sm text-muted">No hay buzones.</p>}
         <ul className="divide-y divide-line border-y border-line">
           {boxes.map((m) => (
             <li key={m.id} className="py-4 space-y-2">
@@ -159,6 +178,41 @@ export default function AdminSignaturesPage() {
               />
               <button
                 onClick={() => saveBoxSig(m)}
+                className="px-4 py-2 text-sm border border-line text-paper hover:border-paper transition-colors"
+              >
+                Guardar firma
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="font-display text-xl text-paper">Firma de cada grupo</h2>
+          <p className="text-xs text-muted mt-1">
+            Los miembros de un grupo pueden enviar como el grupo al redactar (elegir &quot;Desde grupo&quot;). Sale
+            esta firma y debajo la firma personal de quien envía.
+          </p>
+        </div>
+        {groups.length === 0 && !loading && <p className="text-sm text-muted">Todavía no hay grupos.</p>}
+        <ul className="divide-y divide-line border-y border-line">
+          {groups.map((g) => (
+            <li key={g.id} className="py-4 space-y-2">
+              <div>
+                <p className="text-sm text-paper">{g.name}</p>
+                <p className="text-xs text-muted break-all">{g.address}</p>
+              </div>
+              <textarea
+                value={groupSigs[g.id] || ""}
+                onChange={(e) => setGroupSigs((p) => ({ ...p, [g.id]: e.target.value }))}
+                rows={2}
+                maxLength={1000}
+                placeholder="Ej. Departamento Comercial de InOut Media"
+                className={`${input} resize-none`}
+              />
+              <button
+                onClick={() => saveGroupSig(g)}
                 className="px-4 py-2 text-sm border border-line text-paper hover:border-paper transition-colors"
               >
                 Guardar firma

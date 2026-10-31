@@ -9,6 +9,8 @@ import {
   getMessage,
   sendMessage,
   getMySignature,
+  getSenders,
+  Sender,
   Message,
   FullMessage,
   ApiError,
@@ -295,16 +297,26 @@ function ComposeModal({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [signature, setSignature] = useState("");
   const [useSignature, setUseSignature] = useState(true);
+  const [senders, setSenders] = useState<Sender[]>([]);
+  const [fromGroup, setFromGroup] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    getMySignature(token, mailboxId)
+    getMySignature(token, mailboxId, fromGroup ? Number(fromGroup) : null)
       .then(setSignature)
       .catch(() => setSignature(""));
-  }, [mailboxId]);
+  }, [mailboxId, fromGroup]);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    getSenders(token)
+      .then(setSenders)
+      .catch(() => setSenders([]));
+  }, []);
 
   const totalBytes = attachments.reduce((sum, a) => sum + a.size, 0);
 
@@ -352,6 +364,7 @@ function ComposeModal({
         text: body,
         attachments: attachments.map(({ filename, content_type, data }) => ({ filename, content_type, data })),
         include_signature: useSignature,
+        from_group_id: fromGroup ? Number(fromGroup) : undefined,
       });
       onSent();
     } catch (err) {
@@ -375,6 +388,20 @@ function ComposeModal({
 
         <form onSubmit={handleSend} className="p-5 space-y-3 overflow-y-auto">
           {error && <p className="text-sm text-red-400">{error}</p>}
+          {senders.length > 0 && (
+            <select
+              value={fromGroup}
+              onChange={(e) => setFromGroup(e.target.value)}
+              className="w-full bg-ink border border-line px-3 py-2 text-sm text-paper focus:outline-none focus:border-paper"
+            >
+              <option value="">Desde: este buzón</option>
+              {senders.map((g) => (
+                <option key={g.id} value={g.id}>
+                  Desde grupo: {g.name} ({g.address})
+                </option>
+              ))}
+            </select>
+          )}
           <input
             value={to}
             onChange={(e) => setTo(e.target.value)}
