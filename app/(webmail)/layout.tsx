@@ -51,6 +51,8 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
     router.replace("/login");
   }
 
+  const current = mailboxes.find((m) => String(m.id) === currentId) ?? mailboxes[0];
+
   return (
     <div className="h-dvh overflow-hidden flex relative">
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 border-b border-line bg-ink z-30 flex items-center px-4">
@@ -63,7 +65,12 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
             <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
           </svg>
         </button>
-        <span className="font-display text-lg text-paper ml-4 tracking-wide">InOut Mail</span>
+        <span className="font-display text-lg text-paper ml-4 tracking-wide shrink-0">InOut Mail</span>
+        {current && (
+          <span className="ml-2 pl-2 border-l border-line text-sm text-muted truncate min-w-0">
+            {current.display_name}
+          </span>
+        )}
       </div>
 
       {sidebarOpen && (
