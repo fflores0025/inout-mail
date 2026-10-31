@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getMailboxes, sortMailboxes, Mailbox, ApiError } from "@/lib/api";
+import { getMailboxes, getUnread, sortMailboxes, Mailbox, ApiError } from "@/lib/api";
 import { getToken, clearToken, getUserFromToken } from "@/lib/session";
 import PushToggle, { pushLogoutCleanup } from "@/components/PushToggle";
 import { renewSessionIfNeeded } from "@/lib/refresh";
@@ -56,6 +56,7 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showOthers, setShowOthers] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const [unread, setUnread] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const token = getToken();
@@ -86,6 +87,33 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
         }
       });
   }, [router]);
+
+  // Contador de sin leer: icono de la app y numeros del menu
+  useEffect(() => {
+    let stop = false;
+    async function refresh() {
+      const token = getToken();
+      if (!token || stop || document.visibilityState === "hidden") return;
+      try {
+        const u = await getUnread(token);
+        if (stop) return;
+        setUnread(u.by);
+        const nav: any = navigator;
+        if (u.total > 0 && nav.setAppBadge) nav.setAppBadge(u.total).catch(() => {});
+        else if (nav.clearAppBadge) nav.clearAppBadge().catch(() => {});
+      } catch {
+        /* sin conexion: se reintenta en el siguiente ciclo */
+      }
+    }
+    refresh();
+    const t = setInterval(refresh, 45000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      stop = true;
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
 
   async function handleLogout() {
     await pushLogoutCleanup();
@@ -143,7 +171,12 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
               href={`/inbox?mailbox=${mb.id}`}
               className="block px-3 py-2 text-sm text-paper hover:bg-line/40 transition-colors"
             >
-              {mb.display_name}
+              <span className="flex items-center justify-between gap-2">
+                {mb.display_name}
+                {unread[String(mb.id)] > 0 && (
+                  <span className="text-[11px] px-1.5 py-0.5 bg-paper text-ink rounded-sm">{unread[String(mb.id)]}</span>
+                )}
+              </span>
               <span className="block text-xs text-muted/70">{mb.email}</span>
             </a>
           ))}
@@ -165,7 +198,12 @@ export default function WebmailLayout({ children }: { children: React.ReactNode 
                       currentId === String(mb.id) ? "text-paper" : "text-muted"
                     }`}
                   >
-                    {mb.display_name}
+                    <span className="flex items-center justify-between gap-2">
+                      {mb.display_name}
+                      {unread[String(mb.id)] > 0 && (
+                        <span className="text-[11px] px-1.5 py-0.5 bg-paper text-ink rounded-sm">{unread[String(mb.id)]}</span>
+                      )}
+                    </span>
                     <span className="block text-xs text-muted/70">{mb.email}</span>
                   </a>
                 ))}

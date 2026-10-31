@@ -616,3 +616,9 @@ export function setContactShared(token: string, id: number, shared: boolean) {
     token
   );
 }
+
+// --- Contador de sin leer ---
+
+export function getUnread(token: string) {
+  return request<{ total: number; by: Record<string, number> }>("/me/unread", {}, token);
+}

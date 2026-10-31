@@ -15,13 +15,20 @@ self.addEventListener("push", function (event) {
     data = { body: event.data ? event.data.text() : "" };
   }
   var title = data.title || "InOut Mail";
-  event.waitUntil(
+  var tasks = [
     self.registration.showNotification(title, {
       body: data.body || "",
       icon: "/icons/192",
       data: { url: data.url || "/inbox" },
-    })
-  );
+    }),
+  ];
+  // Numero de correos sin leer sobre el icono de la app
+  if (typeof data.badge === "number" && self.navigator && self.navigator.setAppBadge) {
+    tasks.push(
+      (data.badge > 0 ? self.navigator.setAppBadge(data.badge) : self.navigator.clearAppBadge()).catch(function () {})
+    );
+  }
+  event.waitUntil(Promise.all(tasks));
 });
 
 self.addEventListener("notificationclick", function (event) {
