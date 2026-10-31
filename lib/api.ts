@@ -163,6 +163,18 @@ export function deleteMessage(mailboxId: string, uid: number, folder: string, to
   );
 }
 
+export function saveDraft(
+  mailboxId: string,
+  token: string,
+  payload: { to?: string; subject?: string; text?: string; replace_uid?: number; discard_uid?: number }
+) {
+  return request<{ success: boolean; uid: number | null }>(
+    `/mailboxes/${mailboxId}/drafts`,
+    { method: "POST", body: JSON.stringify(payload) },
+    token
+  );
+}
+
 export function getMessages(mailboxId: string, token: string, folder = "inbox") {
   return request<{ messages: Message[] }>(
     `/mailboxes/${mailboxId}/messages?folder=${folder}`,

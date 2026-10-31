@@ -10,6 +10,7 @@ import {
   FOLDERS,
   moveMessage,
   deleteMessage,
+  saveDraft,
   sendMessage,
   getMySignature,
   getSenders,
@@ -39,7 +40,7 @@ function sortByDateDesc(list: Message[]) {
   );
 }
 
-type ComposeInit = { to: string; subject: string; body: string };
+type ComposeInit = { to: string; subject: string; body: string; draftUid?: number };
 
 export default function InboxPage() {
   return (
@@ -113,6 +114,10 @@ function InboxContent() {
     setOpenError(null);
     try {
       const full = await getMessage(mailboxId, uid, token, folder);
+      if (folder === "drafts") {
+        setCompose({ to: full.to || "", subject: full.subject || "", body: full.text || "", draftUid: uid });
+        return;
+      }
       setOpened(full);
       setMessages((prev) => prev.map((m) => (m.uid === uid ? { ...m, seen: true } : m)));
     } catch (err) {
@@ -264,7 +269,10 @@ function InboxContent() {
           <ComposeModal
             mailboxId={mailboxId}
             initial={compose}
-            onClose={() => setCompose(null)}
+            onClose={() => {
+              setCompose(null);
+              if (folder === "drafts") reload();
+            }}
             onSent={() => {
               setCompose(null);
               reload();
@@ -324,7 +332,10 @@ function InboxContent() {
         <ComposeModal
           mailboxId={mailboxId}
           initial={compose}
-          onClose={() => setCompose(null)}
+          onClose={() => {
+            setCompose(null);
+            if (folder === "drafts") reload();
+          }}
           onSent={() => {
             setCompose(null);
             reload();
@@ -451,6 +462,22 @@ function ComposeModal({
     doSend("omit");
   }
 
+  // Al cerrar con texto sin enviar, se guarda como borrador
+  async function closeAndSave() {
+    const changed = to.trim() !== initial.to || subject.trim() !== initial.subject || body.trim() !== initial.body.trim();
+    const hasContent = to.trim() || subject.trim() || body.trim();
+    if (hasContent && (changed || initial.draftUid)) {
+      try {
+        await saveDraft(mailboxId, getToken()!, { to, subject, text: body, replace_uid: initial.draftUid });
+      } catch {
+        /* si falla, se cierra igualmente */
+      }
+    } else if (initial.draftUid && !hasContent) {
+      await saveDraft(mailboxId, getToken()!, { discard_uid: initial.draftUid }).catch(() => {});
+    }
+    onClose();
+  }
+
   async function doSend(mode: "include" | "omit") {
     setAskPersonal(false);
     setSending(true);
@@ -465,6 +492,9 @@ function ComposeModal({
         personal_signature: mode,
         from_group_id: fromGroup ? Number(fromGroup) : undefined,
       });
+      if (initial.draftUid) {
+        await saveDraft(mailboxId, token, { discard_uid: initial.draftUid }).catch(() => {});
+      }
       onSent();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "No se pudo enviar el mensaje");
@@ -478,9 +508,9 @@ function ComposeModal({
       <div className="bg-ink border border-line w-full sm:max-w-lg flex flex-col max-h-[85dvh]">
         <div className="flex items-center justify-between px-5 py-4 border-b border-line shrink-0">
           <h2 className="font-display text-lg text-paper">
-            {initial.to ? "Responder" : "Nuevo mensaje"}
+            {initial.draftUid ? "Borrador" : initial.to ? "Responder" : "Nuevo mensaje"}
           </h2>
-          <button onClick={onClose} className="text-muted hover:text-paper">
+          <button onClick={closeAndSave} className="text-muted hover:text-paper">
             ✕
           </button>
         </div>
