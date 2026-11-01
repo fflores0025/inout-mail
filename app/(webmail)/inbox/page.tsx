@@ -301,7 +301,7 @@ function InboxContent() {
             fill="none"
             stroke="currentColor"
             strokeWidth="1.8"
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-white pointer-events-none"
           >
             <circle cx="11" cy="11" r="7" />
             <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
@@ -310,7 +310,6 @@ function InboxContent() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar"
             aria-label="Buscar correos"
             className="w-full bg-line/30 border border-line rounded-full pl-9 pr-3 py-2 text-sm text-paper placeholder:text-muted/70 focus:outline-none focus:border-paper"
           />
