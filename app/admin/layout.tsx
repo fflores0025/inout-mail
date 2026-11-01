@@ -109,9 +109,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link href="/inbox" className="block px-5 py-3 text-sm text-muted hover:text-paper">
                 ← Volver al correo
               </Link>
-              <Link href="/account" className="block px-5 py-3 text-sm text-muted hover:text-paper">
-                Mi contraseña
-              </Link>
             </div>
           </div>
           <div className="flex-1 bg-black/60" onClick={() => setMenuOpen(false)} />
