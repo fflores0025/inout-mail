@@ -61,6 +61,7 @@ function InboxContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [compose, setCompose] = useState<ComposeInit | null>(null);
+  const [query, setQuery] = useState("");
 
   const [opened, setOpened] = useState<FullMessage | null>(null);
   const swipeStart = useRef<{ x: number; y: number } | null>(null);
@@ -284,10 +285,36 @@ function InboxContent() {
   }
 
   // ---------- Lista ----------
+  const q = query.trim().toLowerCase();
+  const visible = q
+    ? messages.filter((m) => `${m.from} ${m.to || ""} ${m.subject}`.toLowerCase().includes(q))
+    : messages;
   return (
     <main className="h-full overflow-y-auto relative">
       <div className="px-6 sm:px-8 py-6 border-b border-line flex items-center justify-between">
-        <h1 className="font-display text-2xl text-paper">{folderLabel}</h1>
+        <h1 className="font-display text-2xl text-paper whitespace-nowrap">{folderLabel}</h1>
+        <div className="flex-1 min-w-0 mx-3 relative">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
+          </svg>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar"
+            aria-label="Buscar correos"
+            className="w-full bg-line/30 border border-line rounded-full pl-9 pr-3 py-2 text-sm text-paper placeholder:text-muted/70 focus:outline-none focus:border-paper"
+          />
+        </div>
         <div className="flex items-center gap-4 shrink-0">
           {mailboxId && (
             <button
@@ -307,9 +334,12 @@ function InboxContent() {
       {!loading && messages.length === 0 && (
         <p className="px-6 sm:px-8 py-6 text-sm text-muted">No hay mensajes en esta carpeta.</p>
       )}
+      {!loading && messages.length > 0 && visible.length === 0 && (
+        <p className="px-6 sm:px-8 py-6 text-sm text-muted">Ningún correo coincide con “{query}”.</p>
+      )}
 
       <ul className="divide-y divide-line">
-        {messages.map((msg) => (
+        {visible.map((msg) => (
           <li
             key={msg.uid}
             onClick={() => openMessage(msg.uid)}
