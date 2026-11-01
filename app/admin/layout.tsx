@@ -21,6 +21,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const pathname = usePathname();
   const [me, setMe] = useState<Me | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const token = getToken();
@@ -58,41 +59,64 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <p className="px-6 py-8 text-sm text-muted">Cargando…</p>;
   }
 
+  const currentTab = tabs.find((t) => pathname.startsWith(t.href));
+
   return (
     <div className="min-h-dvh">
-      <header className="px-6 sm:px-8 pt-8 pb-5 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl text-paper">Administración</h1>
-          <p className="text-xs text-muted mt-1">
-            InOut Mail · {isSuper ? "Super administrador" : "Director de departamento"}
+      <header className="px-6 sm:px-8 pt-6 pb-5 border-b border-line flex items-center gap-4">
+        <button onClick={() => setMenuOpen(true)} aria-label="Abrir menú de administración" className="text-paper shrink-0">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M3 6h18M3 12h18M3 18h18" strokeLinecap="round" />
+          </svg>
+        </button>
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl text-paper truncate">
+            {currentTab ? currentTab.label : "Administración"}
+          </h1>
+          <p className="text-xs text-muted mt-0.5">
+            Administración · {isSuper ? "Super administrador" : "Director de departamento"}
           </p>
-        </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          <Link href="/inbox" className="text-sm text-muted hover:text-paper">
-            ← Volver al correo
-          </Link>
-          <Link href="/account" className="text-sm text-muted hover:text-paper">
-            Mi contraseña
-          </Link>
         </div>
       </header>
 
-      <nav className="px-6 sm:px-8 border-y border-line flex gap-6 overflow-x-auto">
-        {tabs.map((t) => {
-          const active = pathname.startsWith(t.href);
-          return (
-            <Link
-              key={t.href}
-              href={t.href}
-              className={`py-4 text-lg font-display whitespace-nowrap border-b-2 -mb-px ${
-                active ? "text-paper border-paper" : "text-muted border-transparent hover:text-paper"
-              }`}
-            >
-              {t.label}
-            </Link>
-          );
-        })}
-      </nav>
+      {menuOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="w-72 max-w-[80%] bg-ink border-r border-line h-full flex flex-col">
+            <div className="flex items-center justify-between px-5 py-5 border-b border-line">
+              <span className="font-display text-xl text-paper">Administración</span>
+              <button onClick={() => setMenuOpen(false)} aria-label="Cerrar menú" className="text-muted hover:text-paper">
+                ✕
+              </button>
+            </div>
+            <nav className="flex-1 overflow-y-auto py-2">
+              {tabs.map((t) => {
+                const active = pathname.startsWith(t.href);
+                return (
+                  <Link
+                    key={t.href}
+                    href={t.href}
+                    onClick={() => setMenuOpen(false)}
+                    className={`block px-5 py-3 text-lg font-display ${
+                      active ? "text-paper bg-line/40" : "text-muted hover:text-paper hover:bg-line/30"
+                    }`}
+                  >
+                    {t.label}
+                  </Link>
+                );
+              })}
+            </nav>
+            <div className="border-t border-line py-2">
+              <Link href="/inbox" className="block px-5 py-3 text-sm text-muted hover:text-paper">
+                ← Volver al correo
+              </Link>
+              <Link href="/account" className="block px-5 py-3 text-sm text-muted hover:text-paper">
+                Mi contraseña
+              </Link>
+            </div>
+          </div>
+          <div className="flex-1 bg-black/60" onClick={() => setMenuOpen(false)} />
+        </div>
+      )}
 
       <div className="px-6 sm:px-8 py-8 pb-16">{children}</div>
     </div>
