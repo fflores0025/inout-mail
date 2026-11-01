@@ -124,7 +124,7 @@ export default function AdminTemplatesPage() {
 
   const load = useCallback(async () => {
     try {
-      setList(await adminGetTemplates(getToken()!));
+      setList((await adminGetTemplates(getToken()!)).filter((t) => !t.quick));
     } catch (e) {
       setError(errMsg(e));
     }
@@ -189,10 +189,6 @@ export default function AdminTemplatesPage() {
           <input className={input} placeholder="Identificador (ej. recibo_recarga)" value={fresh.key} onChange={(e) => setFresh({ ...fresh, key: e.target.value })} />
           <input className={input} placeholder="Nombre (ej. Recibo de recarga)" value={fresh.name} onChange={(e) => setFresh({ ...fresh, name: e.target.value })} />
           <Fields v={fresh} set={(n) => setFresh({ ...fresh, ...n })} />
-          <label className="flex items-center gap-2 text-sm text-muted">
-            <input type="checkbox" checked={fresh.quick} onChange={(e) => setFresh({ ...fresh, quick: e.target.checked })} />
-            Disponible como respuesta rápida al redactar
-          </label>
           <button className={btn} disabled={busy}>Crear plantilla</button>
         </form>
       )}
@@ -205,7 +201,7 @@ export default function AdminTemplatesPage() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm text-paper">
-                  {t.name} {!t.active && <span className="text-xs text-muted">(desactivada)</span>}{t.quick && <span className="text-xs text-muted"> · respuesta rápida</span>}
+                  {t.name} {!t.active && <span className="text-xs text-muted">(desactivada)</span>}
                 </p>
                 <p className="text-xs text-muted break-all">{t.key}</p>
               </div>
@@ -218,10 +214,6 @@ export default function AdminTemplatesPage() {
               <div className="space-y-3 max-w-xl">
                 <input className={input} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
                 <Fields v={draft} set={(n) => setDraft({ ...draft, ...n })} />
-                <label className="flex items-center gap-2 text-sm text-muted">
-                  <input type="checkbox" checked={draft.quick} onChange={(e) => setDraft({ ...draft, quick: e.target.checked })} />
-                  Disponible como respuesta rápida al redactar
-                </label>
                 <label className="flex items-center gap-2 text-sm text-muted">
                   <input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} />
                   Activa

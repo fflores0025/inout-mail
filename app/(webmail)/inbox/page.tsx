@@ -459,9 +459,11 @@ function ComposeModal({
   function applyQuick(q: QuickReply) {
     const text = q.body.trim();
     setBody((prev) => (prev.trim() ? `${text}\n\n${prev.replace(/^\n+/, "")}` : text));
-    if (!subject.trim() && q.subject.trim()) setSubject(q.subject);
     setShowQuick(false);
   }
+
+  // Las respuestas preparadas solo se ofrecen al responder, no en un correo nuevo
+  const isReply = (!!initial.to && !initial.draftUid) || /^re:\s/i.test(initial.subject);
 
   const totalBytes = attachments.reduce((sum, a) => sum + a.size, 0);
 
@@ -582,14 +584,14 @@ function ComposeModal({
             placeholder="Asunto"
             className="w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper"
           />
-          {quick.length > 0 && (
+          {isReply && quick.length > 0 && (
             <div className="space-y-2">
               <button
                 type="button"
                 onClick={() => setShowQuick((v) => !v)}
                 className="text-xs text-muted hover:text-paper transition-colors"
               >
-                {showQuick ? "▾" : "▸"} Respuestas rápidas ({quick.length})
+                {showQuick ? "▾" : "▸"} R.A. · respuestas preparadas ({quick.length})
               </button>
               {showQuick && (
                 <ul className="border border-line divide-y divide-line max-h-56 overflow-y-auto">
