@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ApiError,
   MailTemplate,
@@ -19,6 +19,96 @@ const btn =
 
 function errMsg(e: unknown) {
   return e instanceof ApiError ? e.message : "Ha ocurrido un error";
+}
+
+const VARS = ["nombre", "evento", "fecha", "cantidad", "importe", "saldo", "gastado", "enlace", "contacto"];
+
+// Campos de asunto y texto con botones para colocar los huecos {…} donde esté el cursor
+function Fields({
+  v,
+  set,
+}: {
+  v: { subject: string; body: string };
+  set: (next: { subject: string; body: string }) => void;
+}) {
+  const subjectRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const last = useRef<"subject" | "body">("body");
+  const [custom, setCustom] = useState<string[]>([]);
+  const [extra, setExtra] = useState("");
+
+  function insert(name: string) {
+    const tag = `{${name}}`;
+    const field = last.current;
+    const el = field === "subject" ? subjectRef.current : bodyRef.current;
+    const text = field === "subject" ? v.subject : v.body;
+    const start = el?.selectionStart ?? text.length;
+    const end = el?.selectionEnd ?? text.length;
+    const next = text.slice(0, start) + tag + text.slice(end);
+    set(field === "subject" ? { ...v, subject: next } : { ...v, body: next });
+    setTimeout(() => {
+      el?.focus();
+      el?.setSelectionRange(start + tag.length, start + tag.length);
+    }, 0);
+  }
+
+  function addCustom() {
+    const n = extra.trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    if (n && !VARS.includes(n) && !custom.includes(n)) setCustom([...custom, n]);
+    setExtra("");
+  }
+
+  const chip =
+    "px-2.5 py-1 text-xs border border-line text-muted hover:border-paper hover:text-paper transition-colors rounded-full";
+
+  return (
+    <div className="space-y-3">
+      <input
+        ref={subjectRef}
+        className={input}
+        placeholder="Asunto"
+        value={v.subject}
+        onFocus={() => (last.current = "subject")}
+        onChange={(e) => set({ ...v, subject: e.target.value })}
+      />
+      <textarea
+        ref={bodyRef}
+        className={input}
+        rows={8}
+        placeholder="Texto del correo"
+        value={v.body}
+        onFocus={() => (last.current = "body")}
+        onChange={(e) => set({ ...v, body: e.target.value })}
+      />
+      <div className="space-y-2">
+        <p className="text-xs text-muted">Toca un hueco para colocarlo donde tengas el cursor (asunto o texto):</p>
+        <div className="flex flex-wrap gap-2">
+          {[...VARS, ...custom].map((n) => (
+            <button key={n} type="button" className={chip} onMouseDown={(e) => e.preventDefault()} onClick={() => insert(n)}>
+              {`{${n}}`}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            className={input}
+            placeholder="Otro hueco propio (ej. mesa)"
+            value={extra}
+            onChange={(e) => setExtra(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addCustom();
+              }
+            }}
+          />
+          <button type="button" className={`${btn} shrink-0`} onClick={addCustom}>
+            Añadir
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function AdminTemplatesPage() {
@@ -73,7 +163,7 @@ export default function AdminTemplatesPage() {
           <h2 className="font-display text-xl text-paper">Plantillas de No Reply</h2>
           <p className="text-xs text-muted mt-1 max-w-md">
             Correos ya escritos que las apps envían desde no_reply. Usa huecos entre llaves, por ejemplo{" "}
-            {"{nombre}"}, {"{importe}"} o {"{saldo}"}: la app los rellena al enviar.
+            {"{nombre}"}, {"{importe}"} o {"{saldo}"}: la app los rellena al enviar. Con Nueva creas las que quieras.
           </p>
         </div>
         <button className={btn} onClick={() => setCreating((v) => !v)}>
@@ -98,8 +188,7 @@ export default function AdminTemplatesPage() {
         >
           <input className={input} placeholder="Identificador (ej. recibo_recarga)" value={fresh.key} onChange={(e) => setFresh({ ...fresh, key: e.target.value })} />
           <input className={input} placeholder="Nombre (ej. Recibo de recarga)" value={fresh.name} onChange={(e) => setFresh({ ...fresh, name: e.target.value })} />
-          <input className={input} placeholder="Asunto" value={fresh.subject} onChange={(e) => setFresh({ ...fresh, subject: e.target.value })} />
-          <textarea className={input} rows={7} placeholder="Texto del correo" value={fresh.body} onChange={(e) => setFresh({ ...fresh, body: e.target.value })} />
+          <Fields v={fresh} set={(n) => setFresh({ ...fresh, ...n })} />
           <button className={btn} disabled={busy}>Crear plantilla</button>
         </form>
       )}
@@ -124,8 +213,7 @@ export default function AdminTemplatesPage() {
             {editing === t.id && (
               <div className="space-y-3 max-w-xl">
                 <input className={input} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-                <input className={input} value={draft.subject} onChange={(e) => setDraft({ ...draft, subject: e.target.value })} />
-                <textarea className={input} rows={8} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
+                <Fields v={draft} set={(n) => setDraft({ ...draft, ...n })} />
                 <label className="flex items-center gap-2 text-sm text-muted">
                   <input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} />
                   Activa
