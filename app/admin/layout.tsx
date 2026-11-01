@@ -11,6 +11,7 @@ const ALL_TABS = [
   { href: "/admin/addresses", label: "Direcciones", superOnly: true },
   { href: "/admin/groups", label: "Grupos", superOnly: true },
   { href: "/admin/signatures", label: "Firmas", superOnly: true },
+  { href: "/admin/templates", label: "Plantillas", superOnly: true },
   { href: "/admin/mailboxes", label: "Buzones", superOnly: false },
   { href: "/admin/audit", label: "Auditoría", superOnly: false },
 ];

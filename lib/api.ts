@@ -660,3 +660,50 @@ export function setContactShared(token: string, id: number, shared: boolean) {
 export function getUnread(token: string) {
   return request<{ total: number; by: Record<string, number> }>("/me/unread", {}, token);
 }
+
+// --- Admin: plantillas de correo ---
+
+export interface MailTemplate {
+  id: number;
+  key: string;
+  name: string;
+  subject: string;
+  body: string;
+  active: boolean;
+  updated_at: string;
+}
+
+export function adminGetTemplates(token: string) {
+  return request<{ templates: MailTemplate[] }>("/admin/templates", {}, token).then((r) => r.templates);
+}
+
+export function adminCreateTemplate(
+  token: string,
+  data: { key: string; name: string; subject: string; body: string }
+) {
+  return request<{ id: number }>("/admin/templates", { method: "POST", body: JSON.stringify(data) }, token);
+}
+
+export function adminUpdateTemplate(
+  token: string,
+  id: number,
+  data: { name: string; subject: string; body: string; active: boolean }
+) {
+  return request<{ success: boolean }>(
+    `/admin/templates/${id}`,
+    { method: "PATCH", body: JSON.stringify(data) },
+    token
+  );
+}
+
+export function adminDeleteTemplate(token: string, id: number) {
+  return request<{ success: boolean }>(`/admin/templates/${id}`, { method: "DELETE" }, token);
+}
+
+export function adminTestTemplate(token: string, id: number, to: string) {
+  return request<{ success: boolean }>(
+    `/admin/templates/${id}/test`,
+    { method: "POST", body: JSON.stringify({ to }) },
+    token
+  );
+}
