@@ -11,6 +11,8 @@ import {
   moveMessage,
   deleteMessage,
   saveDraft,
+  getQuickReplies,
+  QuickReply,
   sendMessage,
   getMySignature,
   getSenders,
@@ -418,6 +420,8 @@ function ComposeModal({
   const [senders, setSenders] = useState<Sender[]>([]);
   const [contacts, setContacts] = useState<Contacts>({ recent: [], directory: [] });
   const [fromGroup, setFromGroup] = useState("");
+  const [quick, setQuick] = useState<QuickReply[]>([]);
+  const [showQuick, setShowQuick] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -446,7 +450,18 @@ function ComposeModal({
     getContacts(token)
       .then(setContacts)
       .catch(() => {});
+    getQuickReplies(token)
+      .then(setQuick)
+      .catch(() => setQuick([]));
   }, []);
+
+  // Coloca la respuesta rapida al principio del mensaje, antes de lo citado
+  function applyQuick(q: QuickReply) {
+    const text = q.body.trim();
+    setBody((prev) => (prev.trim() ? `${text}\n\n${prev.replace(/^\n+/, "")}` : text));
+    if (!subject.trim() && q.subject.trim()) setSubject(q.subject);
+    setShowQuick(false);
+  }
 
   const totalBytes = attachments.reduce((sum, a) => sum + a.size, 0);
 
@@ -567,6 +582,33 @@ function ComposeModal({
             placeholder="Asunto"
             className="w-full bg-transparent border border-line px-3 py-2 text-sm text-paper placeholder:text-muted/60 focus:outline-none focus:border-paper"
           />
+          {quick.length > 0 && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowQuick((v) => !v)}
+                className="text-xs text-muted hover:text-paper transition-colors"
+              >
+                {showQuick ? "▾" : "▸"} Respuestas rápidas ({quick.length})
+              </button>
+              {showQuick && (
+                <ul className="border border-line divide-y divide-line max-h-56 overflow-y-auto">
+                  {quick.map((q) => (
+                    <li key={q.id}>
+                      <button
+                        type="button"
+                        onClick={() => applyQuick(q)}
+                        className="w-full text-left px-3 py-2 hover:bg-line/30 transition-colors"
+                      >
+                        <span className="block text-sm text-paper">{q.name}</span>
+                        <span className="block text-xs text-muted mt-0.5 line-clamp-2 whitespace-pre-line">{q.body}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}

@@ -670,6 +670,7 @@ export interface MailTemplate {
   subject: string;
   body: string;
   active: boolean;
+  quick: boolean;
   updated_at: string;
 }
 
@@ -679,7 +680,7 @@ export function adminGetTemplates(token: string) {
 
 export function adminCreateTemplate(
   token: string,
-  data: { key: string; name: string; subject: string; body: string }
+  data: { key: string; name: string; subject: string; body: string; quick: boolean }
 ) {
   return request<{ id: number }>("/admin/templates", { method: "POST", body: JSON.stringify(data) }, token);
 }
@@ -687,7 +688,7 @@ export function adminCreateTemplate(
 export function adminUpdateTemplate(
   token: string,
   id: number,
-  data: { name: string; subject: string; body: string; active: boolean }
+  data: { name: string; subject: string; body: string; active: boolean; quick: boolean }
 ) {
   return request<{ success: boolean }>(
     `/admin/templates/${id}`,
@@ -706,4 +707,15 @@ export function adminTestTemplate(token: string, id: number, to: string) {
     { method: "POST", body: JSON.stringify({ to }) },
     token
   );
+}
+
+export interface QuickReply {
+  id: number;
+  name: string;
+  subject: string;
+  body: string;
+}
+
+export function getQuickReplies(token: string) {
+  return request<{ templates: QuickReply[] }>("/templates/quick", {}, token).then((r) => r.templates);
 }

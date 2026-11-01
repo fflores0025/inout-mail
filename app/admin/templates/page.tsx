@@ -114,9 +114,9 @@ function Fields({
 export default function AdminTemplatesPage() {
   const [list, setList] = useState<MailTemplate[]>([]);
   const [editing, setEditing] = useState<number | null>(null);
-  const [draft, setDraft] = useState({ name: "", subject: "", body: "", active: true });
+  const [draft, setDraft] = useState({ name: "", subject: "", body: "", active: true, quick: false });
   const [creating, setCreating] = useState(false);
-  const [fresh, setFresh] = useState({ key: "", name: "", subject: "", body: "" });
+  const [fresh, setFresh] = useState({ key: "", name: "", subject: "", body: "", quick: false });
   const [testTo, setTestTo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -136,7 +136,7 @@ export default function AdminTemplatesPage() {
 
   function startEdit(t: MailTemplate) {
     setEditing(t.id);
-    setDraft({ name: t.name, subject: t.subject, body: t.body, active: t.active });
+    setDraft({ name: t.name, subject: t.subject, body: t.body, active: t.active, quick: !!t.quick });
     setNotice(null);
     setError(null);
   }
@@ -181,7 +181,7 @@ export default function AdminTemplatesPage() {
             e.preventDefault();
             run(async () => {
               await adminCreateTemplate(getToken()!, fresh);
-              setFresh({ key: "", name: "", subject: "", body: "" });
+              setFresh({ key: "", name: "", subject: "", body: "", quick: false });
               setCreating(false);
             }, "Plantilla creada.");
           }}
@@ -189,6 +189,10 @@ export default function AdminTemplatesPage() {
           <input className={input} placeholder="Identificador (ej. recibo_recarga)" value={fresh.key} onChange={(e) => setFresh({ ...fresh, key: e.target.value })} />
           <input className={input} placeholder="Nombre (ej. Recibo de recarga)" value={fresh.name} onChange={(e) => setFresh({ ...fresh, name: e.target.value })} />
           <Fields v={fresh} set={(n) => setFresh({ ...fresh, ...n })} />
+          <label className="flex items-center gap-2 text-sm text-muted">
+            <input type="checkbox" checked={fresh.quick} onChange={(e) => setFresh({ ...fresh, quick: e.target.checked })} />
+            Disponible como respuesta rápida al redactar
+          </label>
           <button className={btn} disabled={busy}>Crear plantilla</button>
         </form>
       )}
@@ -201,7 +205,7 @@ export default function AdminTemplatesPage() {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-sm text-paper">
-                  {t.name} {!t.active && <span className="text-xs text-muted">(desactivada)</span>}
+                  {t.name} {!t.active && <span className="text-xs text-muted">(desactivada)</span>}{t.quick && <span className="text-xs text-muted"> · respuesta rápida</span>}
                 </p>
                 <p className="text-xs text-muted break-all">{t.key}</p>
               </div>
@@ -214,6 +218,10 @@ export default function AdminTemplatesPage() {
               <div className="space-y-3 max-w-xl">
                 <input className={input} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
                 <Fields v={draft} set={(n) => setDraft({ ...draft, ...n })} />
+                <label className="flex items-center gap-2 text-sm text-muted">
+                  <input type="checkbox" checked={draft.quick} onChange={(e) => setDraft({ ...draft, quick: e.target.checked })} />
+                  Disponible como respuesta rápida al redactar
+                </label>
                 <label className="flex items-center gap-2 text-sm text-muted">
                   <input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} />
                   Activa
