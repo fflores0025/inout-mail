@@ -17,6 +17,10 @@ const ALL_TABS = [
   { href: "/admin/audit", label: "Auditoría", superOnly: false },
 ];
 
+// Estas secciones se gestionan ya desde InOut Gestión. Siguen en el codigo (plan B):
+// para volver a mostrarlas basta con vaciar esta lista.
+const HIDDEN = ["/admin/users", "/admin/addresses", "/admin/groups", "/admin/respuestas", "/admin/mailboxes", "/admin/audit"];
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -47,13 +51,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [router]);
 
   const isSuper = me?.role === "super_admin";
-  const tabs = ALL_TABS.filter((t) => isSuper || !t.superOnly);
+  const tabs = ALL_TABS.filter((t) => (isSuper || !t.superOnly) && !HIDDEN.includes(t.href));
 
   useEffect(() => {
-    if (me && !isSuper && ALL_TABS.some((t) => t.superOnly && pathname.startsWith(t.href))) {
-      router.replace("/admin/mailboxes");
+    if (!me) return;
+    if (tabs.length === 0) {
+      router.replace("/inbox");
+      return;
     }
-  }, [me, isSuper, pathname, router]);
+    if (!tabs.some((t) => pathname.startsWith(t.href))) router.replace(tabs[0].href);
+  }, [me, tabs, pathname, router]);
 
   if (!me) {
     return <p className="px-6 py-8 text-sm text-muted">Cargando…</p>;
